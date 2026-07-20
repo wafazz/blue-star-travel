@@ -1,0 +1,23 @@
+{
+  "id": "/account/",
+  "name": "Blue Star Travel & Tours",
+  "short_name": "Blue Star",
+  "description": "Browse packages, book your trip and track your bookings with Blue Star Travel & Tours.",
+  "start_url": "/login",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0b3fd1",
+  "theme_color": "#1466ff",
+  "lang": "en",
+  "categories": ["travel", "lifestyle"],
+  "icons": [
+    { "src": "/images/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/images/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/images/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Browse Packages", "url": "/packages", "icons": [{ "src": "/images/icon-192.png", "sizes": "192x192" }] },
+    { "name": "My Trips", "url": "/account/bookings", "icons": [{ "src": "/images/icon-192.png", "sizes": "192x192" }] }
+  ]
+}

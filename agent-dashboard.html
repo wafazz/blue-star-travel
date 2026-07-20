@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Blue Travel — Agent Portal</title>
+<style>
+:root{
+  --blue:#1466ff; --blue-2:#0b3fd1; --sky:#38bdf8; --ink:#0d1b3e; --muted:#7a86a8;
+  --bg:#eef2fb; --card:#ffffff; --line:#eef1f8; --ok:#16b364; --warn:#f79009; --danger:#f04438;
+  --gold:#f5b301; --shadow:0 10px 30px rgba(16,42,110,.10);
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#dfe6f2;color:var(--ink)}
+
+/* App shell — responsive, fills viewport, centered column on desktop */
+.phone{width:100%;max-width:480px;height:100vh;height:100dvh;margin:0 auto;background:var(--bg);
+  position:relative;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 0 60px rgba(20,50,110,.12)}
+
+/* Scroll area */
+.screen{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding-bottom:96px}
+.screen::-webkit-scrollbar{display:none}
+.page{display:none;animation:fade .35s ease}
+.page.active{display:block}
+@keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+/* Header hero */
+.hero{background:linear-gradient(160deg,#1466ff 0%,#0b3fd1 60%,#082aa0 100%);padding:22px 20px 78px;
+  border-radius:0 0 34px 34px;color:#fff;position:relative}
+.hero .top{display:flex;align-items:center;gap:12px;margin-top:8px}
+.avatar{width:46px;height:46px;border-radius:14px;background:rgba(255,255,255,.16);display:flex;align-items:center;
+  justify-content:center;font-weight:800;font-size:18px;border:1.5px solid rgba(255,255,255,.35)}
+.hi{flex:1}
+.hi .s{font-size:12px;opacity:.8}
+.hi .n{font-size:17px;font-weight:800;margin-top:1px}
+.bell{width:40px;height:40px;border-radius:12px;background:rgba(255,255,255,.14);display:flex;align-items:center;
+  justify-content:center;font-size:17px;position:relative}
+.bell .badge{position:absolute;top:-3px;right:-3px;background:var(--danger);width:16px;height:16px;border-radius:50%;
+  font-size:9px;display:flex;align-items:center;justify-content:center;font-weight:800;border:2px solid #0b3fd1}
+.rankpill{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.15);padding:5px 11px;
+  border-radius:20px;font-size:12px;font-weight:700;margin-top:16px}
+
+/* Wallet card */
+.wallet{margin:-58px 16px 0;background:linear-gradient(135deg,#14264f 0%,#1d3a7a 55%,#2456c7 100%);border-radius:24px;
+  padding:20px;color:#fff;box-shadow:0 20px 40px rgba(13,40,110,.35);position:relative;overflow:hidden}
+.wallet::after{content:"";position:absolute;right:-40px;top:-40px;width:150px;height:150px;border-radius:50%;
+  background:radial-gradient(circle,rgba(56,189,248,.4),transparent 70%)}
+.wallet .lbl{font-size:12px;opacity:.75;display:flex;align-items:center;gap:6px}
+.wallet .amt{font-size:33px;font-weight:800;margin-top:4px;letter-spacing:-.5px}
+.wallet .amt small{font-size:16px;opacity:.7;font-weight:600}
+.wallet .sub{font-size:12px;opacity:.8;margin-top:3px}
+.wallet .acts{display:flex;gap:10px;margin-top:18px;position:relative;z-index:2}
+.wallet .acts button{flex:1;background:rgba(255,255,255,.14);border:none;color:#fff;padding:11px;border-radius:14px;
+  font-size:12px;font-weight:700;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;
+  transition:.15s;backdrop-filter:blur(4px)}
+.wallet .acts button:active{transform:scale(.94);background:rgba(255,255,255,.25)}
+.wallet .acts .ic{font-size:17px}
+.wallet .chip{position:absolute;top:20px;right:20px;font-size:11px;font-weight:700;background:rgba(245,179,1,.25);
+  color:#ffdd8a;padding:4px 9px;border-radius:8px;z-index:2}
+
+/* Section */
+.sec{padding:0 16px;margin-top:22px}
+.sec-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding:0 2px}
+.sec-h h3{font-size:15px;font-weight:800}
+.sec-h a{font-size:12px;color:var(--blue);font-weight:700;text-decoration:none}
+
+/* Quick actions grid */
+.qa{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.qa .q{background:var(--card);border-radius:18px;padding:13px 6px;text-align:center;box-shadow:var(--shadow);
+  cursor:pointer;transition:.15s}
+.qa .q:active{transform:scale(.93)}
+.qa .q .ic{width:42px;height:42px;border-radius:13px;margin:0 auto 7px;display:flex;align-items:center;justify-content:center;font-size:19px}
+.qa .q .t{font-size:10.5px;font-weight:700;color:#3a4668;line-height:1.2}
+.i-blue{background:#e6efff;color:#1466ff}.i-green{background:#e3f9ed;color:#16b364}
+.i-orange{background:#fff1e0;color:#f79009}.i-purple{background:#efe9ff;color:#7c5cff}
+.i-pink{background:#ffe9f2;color:# f0459b;color:#ec4899}.i-teal{background:#e0f7f6;color:#14b8a6}
+.i-red{background:#ffe8e6;color:#f04438}.i-gold{background:#fff6d9;color:#e0a800}
+
+/* Stat mini cards */
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.stat{background:var(--card);border-radius:18px;padding:14px;box-shadow:var(--shadow)}
+.stat .row{display:flex;align-items:center;justify-content:space-between}
+.stat .ic{width:34px;height:34px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:16px}
+.stat .up{font-size:11px;font-weight:800;color:var(--ok);background:#e3f9ed;padding:2px 7px;border-radius:8px}
+.stat .down{font-size:11px;font-weight:800;color:var(--danger);background:#ffe8e6;padding:2px 7px;border-radius:8px}
+.stat .v{font-size:22px;font-weight:800;margin-top:11px;letter-spacing:-.5px}
+.stat .l{font-size:11.5px;color:var(--muted);font-weight:600;margin-top:1px}
+
+/* Target ring card */
+.target{background:var(--card);border-radius:20px;padding:18px;box-shadow:var(--shadow);display:flex;align-items:center;gap:18px}
+.ring{width:96px;height:96px;flex-shrink:0;position:relative}
+.ring svg{transform:rotate(-90deg)}
+.ring .mid{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.ring .mid b{font-size:21px;font-weight:800}
+.ring .mid span{font-size:10px;color:var(--muted);font-weight:600}
+.target .info{flex:1}
+.target .info .k{font-size:12px;color:var(--muted);font-weight:600}
+.target .info .val{font-size:19px;font-weight:800;margin:2px 0 3px}
+.target .info .val small{font-size:13px;color:var(--muted);font-weight:600}
+.bonusnote{background:#fff8e6;border:1px solid #ffe8ad;border-radius:11px;padding:8px 10px;font-size:11.5px;
+  color:#8a6400;font-weight:600;margin-top:10px;display:flex;align-items:center;gap:6px}
+
+/* Missions */
+.mission{background:var(--card);border-radius:16px;padding:13px 14px;box-shadow:var(--shadow);display:flex;
+  align-items:center;gap:12px;margin-bottom:10px}
+.mcheck{width:26px;height:26px;border-radius:9px;border:2px solid #d7deee;flex-shrink:0;display:flex;
+  align-items:center;justify-content:center;font-size:14px;color:#fff;cursor:pointer;transition:.2s}
+.mission.done .mcheck{background:var(--ok);border-color:var(--ok)}
+.mission.done .mtxt{text-decoration:line-through;color:var(--muted)}
+.mtxt{flex:1;font-size:13px;font-weight:700}
+.mpts{font-size:11px;font-weight:800;color:var(--warn);background:#fff4e2;padding:3px 9px;border-radius:9px}
+
+/* Streak / check-in */
+.streak-card{background:linear-gradient(135deg,#ff8a3d,#f6511d);border-radius:20px;padding:18px;color:#fff;
+  box-shadow:0 16px 34px rgba(240,80,20,.28);position:relative;overflow:hidden}
+.streak-card::after{content:"🔥";position:absolute;right:-6px;bottom:-14px;font-size:96px;opacity:.18}
+.streak-card .big{font-size:30px;font-weight:800}
+.streak-card .cap{font-size:12.5px;opacity:.92;font-weight:600}
+.days{display:flex;gap:7px;margin-top:15px;position:relative;z-index:2}
+.day{flex:1;text-align:center;background:rgba(255,255,255,.16);border-radius:11px;padding:8px 0}
+.day.on{background:#fff;color:#f6511d}
+.day.today{outline:2px solid #fff;outline-offset:2px}
+.day .d{font-size:9px;font-weight:700;opacity:.8}
+.day.on .d{opacity:1}
+.day .p{font-size:11px;font-weight:800;margin-top:3px}
+.checkin-btn{width:100%;margin-top:15px;background:#fff;color:#f6511d;border:none;padding:12px;border-radius:13px;
+  font-size:14px;font-weight:800;cursor:pointer;position:relative;z-index:2;transition:.15s}
+.checkin-btn:active{transform:scale(.97)}
+.checkin-btn.claimed{background:rgba(255,255,255,.25);color:#fff}
+
+/* Leaderboard */
+.lb-item{background:var(--card);border-radius:16px;padding:12px 14px;box-shadow:var(--shadow);display:flex;
+  align-items:center;gap:12px;margin-bottom:10px}
+.lb-item.me{background:linear-gradient(135deg,#eef4ff,#e0ecff);border:1.5px solid #bcd4ff}
+.rankn{width:30px;text-align:center;font-weight:800;font-size:15px;color:var(--muted)}
+.rankn.top{color:var(--gold)}
+.lb-av{width:40px;height:40px;border-radius:12px;background:#dfe6f5;display:flex;align-items:center;justify-content:center;
+  font-weight:800;font-size:15px;color:#41527d}
+.lb-name{flex:1}
+.lb-name b{font-size:14px;font-weight:800}
+.lb-name span{font-size:11.5px;color:var(--muted);font-weight:600;display:block}
+.lb-amt{text-align:right}
+.lb-amt b{font-size:14px;font-weight:800;color:var(--blue)}
+.lb-amt span{font-size:10.5px;color:var(--muted);display:block}
+.podium{display:flex;align-items:flex-end;justify-content:center;gap:12px;padding:8px 0 4px}
+.pod{text-align:center;flex:1}
+.pod .pav{width:56px;height:56px;border-radius:18px;margin:0 auto;display:flex;align-items:center;justify-content:center;
+  font-weight:800;font-size:20px;color:#fff;position:relative}
+.pod .crown{position:absolute;top:-18px;left:50%;transform:translateX(-50%);font-size:20px}
+.pod.p1 .pav{background:linear-gradient(135deg,#f5b301,#e0900a);width:66px;height:66px}
+.pod.p2 .pav{background:linear-gradient(135deg,#a9b6cf,#8493b3)}
+.pod.p3 .pav{background:linear-gradient(135deg,#e08a54,#c26a34)}
+.pod .pn{font-size:12px;font-weight:800;margin-top:8px}
+.pod .pa{font-size:11px;color:var(--blue);font-weight:800}
+.pod .bar{background:rgba(255,255,255,.6);border-radius:12px 12px 0 0;margin-top:8px;box-shadow:var(--shadow)}
+.pod.p1 .bar{height:64px}.pod.p2 .bar{height:44px}.pod.p3 .bar{height:32px}
+
+/* Achievements */
+.badges{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.badge-i{text-align:center}
+.badge-i .circ{width:56px;height:56px;border-radius:50%;margin:0 auto 6px;display:flex;align-items:center;
+  justify-content:center;font-size:24px;background:#fff;box-shadow:var(--shadow)}
+.badge-i.locked .circ{filter:grayscale(1);opacity:.4}
+.badge-i .bn{font-size:10px;font-weight:700;color:#3a4668;line-height:1.2}
+
+/* Booking list */
+.bk{background:var(--card);border-radius:16px;padding:13px 14px;box-shadow:var(--shadow);margin-bottom:11px}
+.bk .r1{display:flex;align-items:center;justify-content:space-between}
+.bk .cust{font-size:14px;font-weight:800}
+.bk .pkg{font-size:12px;color:var(--muted);font-weight:600;margin-top:3px;display:flex;align-items:center;gap:5px}
+.bk .r2{display:flex;align-items:center;justify-content:space-between;margin-top:11px;padding-top:11px;border-top:1px dashed var(--line)}
+.bk .price{font-size:15px;font-weight:800;color:var(--ink)}
+.tag{font-size:10.5px;font-weight:800;padding:4px 9px;border-radius:8px}
+.t-confirm{background:#e3f9ed;color:#0f9a53}.t-pend{background:#fff1e0;color:#c9760a}
+.t-verify{background:#e6efff;color:#1466ff}.t-reject{background:#ffe8e6;color:#d13c30}
+.seg{display:flex;background:#e5eaf6;border-radius:13px;padding:4px;margin-bottom:14px}
+.seg button{flex:1;border:none;background:none;padding:8px;border-radius:10px;font-size:12px;font-weight:700;
+  color:var(--muted);cursor:pointer;transition:.2s}
+.seg button.on{background:#fff;color:var(--ink);box-shadow:0 2px 8px rgba(0,0,0,.06)}
+
+/* Reward points banner */
+.rp{background:linear-gradient(135deg,#7c5cff,#5a2fd6);border-radius:20px;padding:18px;color:#fff;
+  box-shadow:0 16px 34px rgba(90,47,214,.28);display:flex;align-items:center;gap:16px;position:relative;overflow:hidden}
+.rp::after{content:"💎";position:absolute;right:-4px;top:-10px;font-size:84px;opacity:.16}
+.rp .pts{font-size:30px;font-weight:800}
+.rp .l{font-size:12px;opacity:.9}
+.rp button{margin-left:auto;background:#fff;color:#5a2fd6;border:none;padding:10px 15px;border-radius:12px;
+  font-weight:800;font-size:12.5px;cursor:pointer;position:relative;z-index:2}
+
+/* generic list card */
+.lrow{background:var(--card);border-radius:15px;padding:14px;box-shadow:var(--shadow);display:flex;align-items:center;
+  gap:13px;margin-bottom:10px;cursor:pointer;transition:.15s}
+.lrow:active{transform:scale(.98)}
+.lrow .ic{width:42px;height:42px;border-radius:13px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.lrow .tx{flex:1}
+.lrow .tx b{font-size:13.5px;font-weight:800}
+.lrow .tx span{font-size:11.5px;color:var(--muted);font-weight:600}
+.lrow .arw{color:#c2cbe0;font-size:18px}
+.lrow.logout b{color:var(--danger)}
+
+/* Profile */
+.phead{text-align:center;padding:6px 0 4px}
+.phead .pav{width:82px;height:82px;border-radius:26px;margin:0 auto;background:linear-gradient(135deg,#1466ff,#0b3fd1);
+  display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:800;color:#fff;box-shadow:0 12px 26px rgba(20,102,255,.3)}
+.phead h2{font-size:19px;font-weight:800;margin-top:12px}
+.phead .role{font-size:12px;color:var(--muted);font-weight:600;margin-top:2px}
+.pstats{display:flex;background:var(--card);border-radius:18px;box-shadow:var(--shadow);margin:16px 0;overflow:hidden}
+.pstats div{flex:1;text-align:center;padding:14px 6px}
+.pstats div+div{border-left:1px solid var(--line)}
+.pstats b{font-size:17px;font-weight:800;display:block}
+.pstats span{font-size:10.5px;color:var(--muted);font-weight:600}
+
+/* Bottom nav */
+.nav{position:absolute;bottom:0;left:0;right:0;height:78px;background:rgba(255,255,255,.94);backdrop-filter:blur(14px);
+  border-top:1px solid #e7ecf7;display:flex;align-items:center;justify-content:space-around;padding:0 8px 12px;z-index:40}
+.nav button{background:none;border:none;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10px;
+  font-weight:700;color:#a3adca;cursor:pointer;flex:1;padding-top:12px;transition:.15s;position:relative}
+.nav button .ic{font-size:20px;transition:.2s}
+.nav button.on{color:var(--blue)}
+.nav button.on .ic{transform:translateY(-2px) scale(1.08)}
+.nav .fabwrap{flex:0 0 auto;margin-top:-30px}
+.nav .fab{width:56px;height:56px;border-radius:20px;background:linear-gradient(135deg,#1466ff,#0b3fd1);
+  display:flex;align-items:center;justify-content:center;font-size:26px;color:#fff;box-shadow:0 10px 24px rgba(20,102,255,.42);
+  border:4px solid #fff;cursor:pointer;transition:.15s}
+.nav .fab:active{transform:scale(.92)}
+
+/* Toast */
+.toast{position:absolute;bottom:100px;left:50%;transform:translateX(-50%) translateY(20px);background:#0d1b3e;
+  color:#fff;padding:11px 20px;border-radius:14px;font-size:13px;font-weight:700;opacity:0;pointer-events:none;
+  transition:.3s;z-index:70;box-shadow:0 10px 30px rgba(0,0,0,.3);white-space:nowrap}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.pagetitle{padding:16px 18px 4px;font-size:22px;font-weight:800}
+.hint{text-align:center;color:#5c6a90;font-size:12px;margin-top:14px;font-weight:600}
+</style>
+</head>
+<body>
+<div class="phone">
+
+  <div class="screen" id="screen">
+
+    <!-- ================= HOME ================= -->
+    <div class="page active" id="page-home">
+      <div class="hero">
+        <div class="top">
+          <div class="avatar">JR</div>
+          <div class="hi">
+            <div class="s">🎉 Good Morning,</div>
+            <div class="n">John Rahman</div>
+          </div>
+          <div class="bell">🔔<span class="badge">3</span></div>
+        </div>
+        <div class="rankpill">🔥 Ranked #4 out of 126 agents</div>
+      </div>
+
+      <!-- Wallet -->
+      <div class="wallet">
+        <div class="chip">⭐ Gold Agent</div>
+        <div class="lbl">💰 Monthly Commission</div>
+        <div class="amt">RM 3,860<small>.00</small></div>
+        <div class="sub">🎯 Only RM640 more to unlock your bonus</div>
+        <div class="acts">
+          <button onclick="toast('Withdrawal request opened')"><span class="ic">⬇️</span>Withdraw</button>
+          <button onclick="toast('Commission history')"><span class="ic">📜</span>History</button>
+          <button onclick="go('rewards')"><span class="ic">🎁</span>Rewards</button>
+          <button onclick="toast('Wallet top-up')"><span class="ic">＋</span>Top Up</button>
+        </div>
+      </div>
+
+      <!-- Quick actions -->
+      <div class="sec">
+        <div class="sec-h"><h3>Quick Actions</h3></div>
+        <div class="qa">
+          <div class="q" onclick="toast('New booking form')"><div class="ic i-blue">🧳</div><div class="t">New Booking</div></div>
+          <div class="q" onclick="toast('Add customer')"><div class="ic i-green">👤</div><div class="t">Add Customer</div></div>
+          <div class="q" onclick="toast('Upload payment slip')"><div class="ic i-orange">💳</div><div class="t">Upload Pay</div></div>
+          <div class="q" onclick="go('bookings')"><div class="ic i-purple">📋</div><div class="t">Bookings</div></div>
+          <div class="q" onclick="toast('Follow-up list')"><div class="ic i-red">📞</div><div class="t">Follow-up</div></div>
+          <div class="q" onclick="toast('Marketing center')"><div class="ic i-teal">📢</div><div class="t">Marketing</div></div>
+          <div class="q" onclick="toast('Referral program')"><div class="ic i-pink">🔗</div><div class="t">Referral</div></div>
+          <div class="q" onclick="toast('Packages catalog')"><div class="ic i-gold">🗺️</div><div class="t">Packages</div></div>
+        </div>
+      </div>
+
+      <!-- Alerts strip -->
+      <div class="sec">
+        <div class="sec-h"><h3>Needs Your Attention</h3></div>
+        <div class="lrow" onclick="toast('7 customers to follow up')">
+          <div class="ic i-orange">📞</div>
+          <div class="tx"><b>7 customers waiting for follow-up</b><span>Follow up today to keep your streak alive</span></div>
+          <div class="arw">›</div>
+        </div>
+        <div class="lrow" onclick="go('bookings')">
+          <div class="ic i-blue">⏳</div>
+          <div class="tx"><b>5 bookings awaiting confirmation</b><span>Provider response pending</span></div>
+          <div class="arw">›</div>
+        </div>
+      </div>
+
+      <!-- Sales stats -->
+      <div class="sec">
+        <div class="sec-h"><h3>Sales Overview</h3><a onclick="toast('Full sales dashboard')">View all</a></div>
+        <div class="stats">
+          <div class="stat">
+            <div class="row"><div class="ic i-blue">📅</div><div class="up">▲ 12%</div></div>
+            <div class="v">RM 1,240</div><div class="l">Today's Sales</div>
+          </div>
+          <div class="stat">
+            <div class="row"><div class="ic i-green">📈</div><div class="up">▲ 8%</div></div>
+            <div class="v">RM 8,450</div><div class="l">This Week</div>
+          </div>
+          <div class="stat">
+            <div class="row"><div class="ic i-purple">💼</div><div class="up">▲ 23</div></div>
+            <div class="v">48</div><div class="l">Bookings (Mo)</div>
+          </div>
+          <div class="stat">
+            <div class="row"><div class="ic i-orange">👥</div><div class="down">▼ 2</div></div>
+            <div class="v">132</div><div class="l">My Customers</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Target ring -->
+      <div class="sec">
+        <div class="sec-h"><h3>Monthly Sales Target</h3></div>
+        <div class="target">
+          <div class="ring">
+            <svg width="96" height="96">
+              <circle cx="48" cy="48" r="40" stroke="#eef1f8" stroke-width="10" fill="none"/>
+              <circle cx="48" cy="48" r="40" stroke="url(#g1)" stroke-width="10" fill="none"
+                stroke-linecap="round" stroke-dasharray="251.2" stroke-dashoffset="37.7"/>
+              <defs><linearGradient id="g1" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stop-color="#38bdf8"/><stop offset="1" stop-color="#1466ff"/>
+              </linearGradient></defs>
+            </svg>
+            <div class="mid"><b>85%</b><span>Completed</span></div>
+          </div>
+          <div class="info">
+            <div class="k">Achieved</div>
+            <div class="val">RM 8,450 <small>/ RM 10,000</small></div>
+            <div class="bonusnote">🎁 Hit RM10,000 to unlock a RM500 cash bonus</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Daily missions -->
+      <div class="sec">
+        <div class="sec-h"><h3>Today's Missions</h3><a onclick="toast('Reward: +150 pts')">+150 pts</a></div>
+        <div class="mission done" onclick="tog(this)"><div class="mcheck">✓</div><div class="mtxt">Follow up with 10 customers</div><div class="mpts">+40</div></div>
+        <div class="mission done" onclick="tog(this)"><div class="mcheck">✓</div><div class="mtxt">Complete 1 booking</div><div class="mpts">+50</div></div>
+        <div class="mission" onclick="tog(this)"><div class="mcheck"></div><div class="mtxt">Upload 1 marketing video</div><div class="mpts">+30</div></div>
+        <div class="mission" onclick="tog(this)"><div class="mcheck"></div><div class="mtxt">Share 3 promotional posts</div><div class="mpts">+20</div></div>
+        <div class="mission" onclick="tog(this)"><div class="mcheck"></div><div class="mtxt">Submit daily activity report</div><div class="mpts">+10</div></div>
+      </div>
+
+      <!-- Check-in / streak -->
+      <div class="sec">
+        <div class="sec-h"><h3>Daily Check-in</h3></div>
+        <div class="streak-card">
+          <div class="big">🔥 12 Days</div>
+          <div class="cap">Active streak — don't miss today or it resets!</div>
+          <div class="days">
+            <div class="day on"><div class="d">D1</div><div class="p">10</div></div>
+            <div class="day on"><div class="d">D2</div><div class="p">20</div></div>
+            <div class="day on"><div class="d">D3</div><div class="p">30</div></div>
+            <div class="day on"><div class="d">D7</div><div class="p">🎟️</div></div>
+            <div class="day today"><div class="d">D14</div><div class="p">★</div></div>
+            <div class="day"><div class="d">D30</div><div class="p">🎁</div></div>
+          </div>
+          <button class="checkin-btn" id="checkinBtn" onclick="checkin(this)">Check in today &nbsp;+30 pts</button>
+        </div>
+      </div>
+
+      <!-- Leaderboard preview -->
+      <div class="sec">
+        <div class="sec-h"><h3>Leaderboard</h3><a onclick="go('rank')">Full board</a></div>
+        <div class="lb-item"><div class="rankn top">1</div><div class="lb-av">SA</div><div class="lb-name"><b>Sarah Aziz</b><span>Platinum Agent</span></div><div class="lb-amt"><b>RM 12,400</b><span>this month</span></div></div>
+        <div class="lb-item me"><div class="rankn">4</div><div class="lb-av">JR</div><div class="lb-name"><b>You (John)</b><span>Gold Agent</span></div><div class="lb-amt"><b>RM 8,450</b><span>this month</span></div></div>
+      </div>
+
+      <div class="hint">— Blue Travel Agent Portal · demo mockup —</div>
+    </div>
+
+    <!-- ================= BOOKINGS ================= -->
+    <div class="page" id="page-bookings">
+      <div class="pagetitle">📋 My Bookings</div>
+      <div class="sec">
+        <div class="seg">
+          <button class="on" onclick="segf(this,'all')">All</button>
+          <button onclick="segf(this,'pend')">Pending</button>
+          <button onclick="segf(this,'confirm')">Confirmed</button>
+          <button onclick="segf(this,'done')">Done</button>
+        </div>
+
+        <div class="bk">
+          <div class="r1"><div><div class="cust">Aisyah Kamal</div><div class="pkg">🕋 Umrah Package · 12 Days</div></div><span class="tag t-verify">Verifying</span></div>
+          <div class="r2"><div class="price">RM 8,900</div><div class="pkg">📅 20 Aug 2026</div></div>
+        </div>
+        <div class="bk">
+          <div class="r1"><div><div class="cust">Daniel Tan</div><div class="pkg">🏝️ Bali Free & Easy · 5D4N</div></div><span class="tag t-pend">Pending</span></div>
+          <div class="r2"><div class="price">RM 3,200</div><div class="pkg">📅 02 Sep 2026</div></div>
+        </div>
+        <div class="bk">
+          <div class="r1"><div><div class="cust">Farah Idris</div><div class="pkg">🚢 Langkawi Cruise · 3D2N</div></div><span class="tag t-confirm">Confirmed</span></div>
+          <div class="r2"><div class="price">RM 2,450</div><div class="pkg">📅 15 Jul 2026</div></div>
+        </div>
+        <div class="bk">
+          <div class="r1"><div><div class="cust">Hafiz Rahman</div><div class="pkg">🗼 Tokyo Tour · 7D6N</div></div><span class="tag t-confirm">Confirmed</span></div>
+          <div class="r2"><div class="price">RM 11,800</div><div class="pkg">📅 28 Aug 2026</div></div>
+        </div>
+        <div class="bk">
+          <div class="r1"><div><div class="cust">Nurul Huda</div><div class="pkg">🏖️ Phuket Getaway · 4D3N</div></div><span class="tag t-reject">Rejected</span></div>
+          <div class="r2"><div class="price">RM 2,100</div><div class="pkg">📅 10 Jul 2026</div></div>
+        </div>
+        <div class="hint">Tap a booking to view timeline, upload payment &amp; download voucher.</div>
+      </div>
+    </div>
+
+    <!-- ================= REWARDS ================= -->
+    <div class="page" id="page-rewards">
+      <div class="pagetitle">🎁 Rewards</div>
+      <div class="sec">
+        <div class="rp">
+          <div><div class="pts">2,480</div><div class="l">Reward Points available</div></div>
+          <button onclick="toast('Redeem catalog opened')">Redeem</button>
+        </div>
+      </div>
+
+      <div class="sec">
+        <div class="sec-h"><h3>Redeem Points For</h3></div>
+        <div class="qa">
+          <div class="q" onclick="toast('Redeem: Cash')"><div class="ic i-green">💵</div><div class="t">Cash</div></div>
+          <div class="q" onclick="toast('Redeem: Travel Voucher')"><div class="ic i-blue">🎟️</div><div class="t">Travel Voucher</div></div>
+          <div class="q" onclick="toast('Redeem: Shopping')"><div class="ic i-orange">🛍️</div><div class="t">Shopping</div></div>
+          <div class="q" onclick="toast('Redeem: Merchandise')"><div class="ic i-purple">🎽</div><div class="t">Merchandise</div></div>
+          <div class="q" onclick="toast('Redeem: Extra Commission')"><div class="ic i-gold">💰</div><div class="t">+ Commission</div></div>
+          <div class="q" onclick="toast('Redeem: Free Trip')"><div class="ic i-teal">✈️</div><div class="t">Free Trip</div></div>
+          <div class="q" onclick="toast('Redeem: Hotel Voucher')"><div class="ic i-pink">🏨</div><div class="t">Hotel</div></div>
+          <div class="q" onclick="toast('Redeem: Merchandise')"><div class="ic i-red">🎫</div><div class="t">More</div></div>
+        </div>
+      </div>
+
+      <div class="sec">
+        <div class="sec-h"><h3>Achievements</h3><a onclick="toast('9 of 12 unlocked')">9/12</a></div>
+        <div class="badges">
+          <div class="badge-i"><div class="circ">🏆</div><div class="bn">First Booking</div></div>
+          <div class="badge-i"><div class="circ">💰</div><div class="bn">RM10K Sales</div></div>
+          <div class="badge-i"><div class="circ">🥉</div><div class="bn">RM50K Sales</div></div>
+          <div class="badge-i"><div class="circ">👥</div><div class="bn">100 Customers</div></div>
+          <div class="badge-i"><div class="circ">🔟</div><div class="bn">Top 10 Agent</div></div>
+          <div class="badge-i"><div class="circ">🔥</div><div class="bn">30-Day Streak</div></div>
+          <div class="badge-i"><div class="circ">⚡</div><div class="bn">Fast Closer</div></div>
+          <div class="badge-i locked"><div class="circ">🥇</div><div class="bn">Top 3 Agent</div></div>
+          <div class="badge-i locked"><div class="circ">📞</div><div class="bn">100 Follow-ups</div></div>
+          <div class="badge-i locked"><div class="circ">🤝</div><div class="bn">Referral King</div></div>
+        </div>
+      </div>
+
+      <div class="sec">
+        <div class="sec-h"><h3>Referral Program</h3></div>
+        <div class="lrow" onclick="toast('Copied referral link!')"><div class="ic i-blue">🔗</div><div class="tx"><b>Refer New Agents</b><span>Earn RM50 + 5% override</span></div><div class="arw">›</div></div>
+        <div class="lrow" onclick="toast('Copied customer link!')"><div class="ic i-green">👥</div><div class="tx"><b>Refer Customers</b><span>Earn bonus points per booking</span></div><div class="arw">›</div></div>
+        <div class="lrow" onclick="toast('Referral tracking')"><div class="ic i-purple">📊</div><div class="tx"><b>Referral Tracking</b><span>3 pending · 8 joined</span></div><div class="arw">›</div></div>
+      </div>
+      <div class="hint">Earn points from bookings, check-ins, follow-ups &amp; training.</div>
+    </div>
+
+    <!-- ================= LEADERBOARD ================= -->
+    <div class="page" id="page-rank">
+      <div class="pagetitle">🏆 Leaderboard</div>
+      <div class="sec">
+        <div class="seg">
+          <button onclick="segp(this)">Daily</button>
+          <button onclick="segp(this)">Weekly</button>
+          <button class="on" onclick="segp(this)">Monthly</button>
+          <button onclick="segp(this)">Yearly</button>
+        </div>
+        <div class="podium">
+          <div class="pod p2"><div class="pav">RA<span class="crown">🥈</span></div><div class="pn">Rizal A.</div><div class="pa">RM 10,900</div><div class="bar"></div></div>
+          <div class="pod p1"><div class="pav">SA<span class="crown">👑</span></div><div class="pn">Sarah Aziz</div><div class="pa">RM 12,400</div><div class="bar"></div></div>
+          <div class="pod p3"><div class="pav">ML<span class="crown">🥉</span></div><div class="pn">Mei Ling</div><div class="pa">RM 9,600</div><div class="bar"></div></div>
+        </div>
+      </div>
+      <div class="sec">
+        <div class="lb-item me"><div class="rankn">4</div><div class="lb-av">JR</div><div class="lb-name"><b>You (John)</b><span>Gold Agent · 🔥12-day streak</span></div><div class="lb-amt"><b>RM 8,450</b><span>this month</span></div></div>
+        <div class="lb-item"><div class="rankn">5</div><div class="lb-av">FZ</div><div class="lb-name"><b>Farid Zaki</b><span>Gold Agent</span></div><div class="lb-amt"><b>RM 7,980</b><span>this month</span></div></div>
+        <div class="lb-item"><div class="rankn">6</div><div class="lb-av">NA</div><div class="lb-name"><b>Nadia Amin</b><span>Silver Agent</span></div><div class="lb-amt"><b>RM 7,210</b><span>this month</span></div></div>
+        <div class="lb-item"><div class="rankn">7</div><div class="lb-av">KL</div><div class="lb-name"><b>Kevin Lim</b><span>Silver Agent</span></div><div class="lb-amt"><b>RM 6,540</b><span>this month</span></div></div>
+        <div class="lb-item"><div class="rankn">8</div><div class="lb-av">SH</div><div class="lb-name"><b>Siti Hajar</b><span>Silver Agent</span></div><div class="lb-amt"><b>RM 6,120</b><span>this month</span></div></div>
+        <div class="hint">🔔 You'll get a push notification when your rank changes.</div>
+      </div>
+    </div>
+
+    <!-- ================= PROFILE ================= -->
+    <div class="page" id="page-profile">
+      <div class="pagetitle">👤 Profile</div>
+      <div class="sec">
+        <div class="phead">
+          <div class="pav">JR</div>
+          <h2>John Rahman</h2>
+          <div class="role">⭐ Gold Agent · ID #AG-0042 · Ranked #4</div>
+        </div>
+        <div class="pstats">
+          <div><b>132</b><span>Customers</span></div>
+          <div><b>48</b><span>Bookings</span></div>
+          <div><b>RM 8.4K</b><span>This Month</span></div>
+        </div>
+      </div>
+      <div class="sec">
+        <div class="lrow" onclick="toast('My Customers')"><div class="ic i-blue">👥</div><div class="tx"><b>My Customers</b><span>Manage &amp; add customers</span></div><div class="arw">›</div></div>
+        <div class="lrow" onclick="toast('Follow-up Reminders')"><div class="ic i-orange">⏰</div><div class="tx"><b>Follow-up Reminders</b><span>7 pending today</span></div><div class="arw">›</div></div>
+        <div class="lrow" onclick="toast('Commission & Withdrawals')"><div class="ic i-green">💰</div><div class="tx"><b>Commission &amp; Withdrawal</b><span>RM3,860 available</span></div><div class="arw">›</div></div>
+        <div class="lrow" onclick="toast('Marketing Center')"><div class="ic i-purple">📢</div><div class="tx"><b>Marketing Center</b><span>Posters, materials &amp; links</span></div><div class="arw">›</div></div>
+        <div class="lrow" onclick="toast('Daily Report submitted')"><div class="ic i-teal">📝</div><div class="tx"><b>Submit Daily Report</b><span>Earn +10 pts</span></div><div class="arw">›</div></div>
+        <div class="lrow" onclick="toast('Support ticket')"><div class="ic i-red">🎧</div><div class="tx"><b>Help &amp; Support</b><span>Internal ticketing</span></div><div class="arw">›</div></div>
+        <div class="lrow" onclick="toast('Settings')"><div class="ic i-gold">⚙️</div><div class="tx"><b>Settings</b><span>Account &amp; notifications</span></div><div class="arw">›</div></div>
+        <div class="lrow logout" onclick="logout()"><div class="ic i-red">🚪</div><div class="tx"><b>Log Out</b><span>Sign out of your agent account</span></div><div class="arw">›</div></div>
+      </div>
+      <div class="hint">Blue Travel · TAMS Agent Portal v1.0</div>
+    </div>
+
+  </div><!-- /screen -->
+
+  <!-- Bottom nav -->
+  <div class="nav" id="nav">
+    <button class="on" data-p="home" onclick="go('home')"><span class="ic">🏠</span>Home</button>
+    <button data-p="bookings" onclick="go('bookings')"><span class="ic">📋</span>Bookings</button>
+    <div class="fabwrap"><div class="fab" onclick="toast('➕ Create New Booking')">＋</div></div>
+    <button data-p="rewards" onclick="go('rewards')"><span class="ic">🎁</span>Rewards</button>
+    <button data-p="profile" onclick="go('profile')"><span class="ic">👤</span>Me</button>
+  </div>
+
+  <div class="toast" id="toast"></div>
+</div>
+
+<script>
+function go(p){
+  document.querySelectorAll('.page').forEach(el=>el.classList.remove('active'));
+  var pg=document.getElementById('page-'+p);
+  if(pg)pg.classList.add('active');
+  document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('on'));
+  var navP = (p==='rank')?'rewards':p;
+  var btn=document.querySelector('.nav button[data-p="'+navP+'"]');
+  if(btn)btn.classList.add('on');
+  document.getElementById('screen').scrollTop=0;
+}
+function tog(el){
+  el.classList.toggle('done');
+  el.querySelector('.mcheck').textContent = el.classList.contains('done')?'✓':'';
+  toast(el.classList.contains('done')?'Mission complete! 🎉':'Mission unchecked');
+}
+function checkin(btn){
+  if(btn.classList.contains('claimed'))return;
+  btn.classList.add('claimed');
+  btn.textContent='✓ Checked in — see you tomorrow!';
+  toast('🔥 Streak extended · +30 points');
+}
+function segf(btn,f){
+  btn.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  toast('Filter: '+btn.textContent);
+}
+function segp(btn){
+  btn.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  toast(btn.textContent+' ranking');
+}
+function logout(){
+  toast('Signing out…');
+  setTimeout(function(){window.location.href='login.html';},700);
+}
+var tt;
+function toast(msg){
+  var t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('show'),1600);
+}
+</script>
+</body>
+</html>
