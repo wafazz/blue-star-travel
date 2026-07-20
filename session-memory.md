@@ -53,6 +53,13 @@
 - Full per-phase detail (files, services, verification) lives in MemoryCore profile #41.
 
 ### Where We Left Off
+- **[✔] Public landing page rebuilt & wired to live data (2026-07-20).** `Route::view('/','welcome')` → `CatalogController@home`; the old 49-line placeholder is now a full marketing page.
+  - Controller feeds: featured packages (falls back to any active if <3 featured), category chips **with live counts**, unique destinations, next open departures (seats-left computed), stat counters (packages / destinations / customers+bookings / providers) and `Company::current()` for the footer.
+  - Sections: sticky nav (transparent → frosted white on scroll) · gradient hero + search form that GETs to `catalog.index` (q + category) · portal-access glass card · stat strip · featured package grid · popular destinations + next departures · why-us · how-it-works · agent-recruitment CTA · footer with real company reg/licence/phone/email/address.
+  - No photos in the DB, so each package card paints a **category-coloured gradient + emoji** and swaps to `cover_image` automatically once uploaded. Interactions are vanilla JS only (IntersectionObserver reveal, animated counters, sticky nav) — no new dependency.
+  - Verified in Chrome: `/` 200, real packages/prices/seats/company data rendered, chips + search hit `/packages` 200.
+  - **Fixed:** default `ExampleTest` (hits `/`) now uses `RefreshDatabase` — it 500'd once `/` started querying packages. **15 tests pass.**
+- **README.md rewritten** (was the stock Laravel one) + project **pushed to GitHub** `wafazz/blue-star-travel` (main). `.gitignore` extended to exclude `blue-star.pdf` (client-confidential spec).
 - **Agent + Customer portals are now PWAs (2026-07-20)** — installable from the login page, as asked.
   - `public/manifest-agent.webmanifest` (name "Blue Star Agent", scope `/agent/`, start `/agent/login`, shortcuts: New Booking / Wallet / Leaderboard) and `public/manifest-customer.webmanifest` (name "Blue Star Travel & Tours", scope `/`, start `/login`, shortcuts: Browse Packages / My Trips). Separate manifests = two distinct home-screen apps.
   - Icons generated with PHP GD from `logo-icon.png`, **flattened onto white** (iOS renders PNG alpha as black): `icon-192`, `icon-512`, `icon-maskable-512` (logo at 72% for the Android circular safe zone).

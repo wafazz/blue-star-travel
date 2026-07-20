@@ -44,7 +44,7 @@ use App\Http\Controllers\NotificationController;
 | Public landing
 |--------------------------------------------------------------------------
 */
-Route::view('/', 'welcome')->name('home');
+Route::get('/', [CatalogController::class, 'home'])->name('home');
 
 /*
 |--------------------------------------------------------------------------
