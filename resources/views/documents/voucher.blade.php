@@ -59,7 +59,7 @@
         <div class="card">
           <div class="k">Travel Date</div>
           <div class="v">{{ $booking->travel_date?->format('d M Y') ?? 'To be advised' }}</div>
-          <div class="muted">{{ $booking->total_pax }} traveller(s) · {{ $booking->adults }}A {{ $booking->children }}C {{ $booking->infants }}I</div>
+          <div class="muted">{{ $booking->total_pax }} traveller(s) · {{ $booking->adults }}A {{ $booking->children }}C{{ $booking->seniors ? ' ' . $booking->seniors . 'S' : '' }} {{ $booking->infants }}I</div>
         </div>
       </td>
     </tr>

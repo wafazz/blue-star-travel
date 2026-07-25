@@ -63,7 +63,7 @@
           </div>
           <div class="col-md-4">
             <div class="text-secondary small">Pax</div>
-            <div class="fw-semibold">{{ $booking->adults }}A · {{ $booking->children }}C · {{ $booking->infants }}I ({{ $booking->total_pax }})</div>
+            <div class="fw-semibold">{{ $booking->adults }}A · {{ $booking->children }}C{{ $booking->seniors ? ' · ' . $booking->seniors . 'S' : '' }} · {{ $booking->infants }}I ({{ $booking->total_pax }})</div>
           </div>
         </div>
         @if ($booking->notes)

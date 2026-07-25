@@ -53,6 +53,7 @@ class PackageController extends Controller
         $package = Package::create($data);
         $this->syncPricings($request, $package);
         $this->syncDates($request, $package);
+        $this->syncCommissions($request, $package);
 
         return redirect()->route('manage.packages.edit', $package)->with('ok', 'Package created.');
     }
@@ -66,7 +67,7 @@ class PackageController extends Controller
 
     public function edit(Package $package)
     {
-        $package->load('pricings', 'dates');
+        $package->load('pricings', 'dates', 'commissionLevels');
 
         return view('manage.packages.form', [
             'package'   => $package,
@@ -91,6 +92,7 @@ class PackageController extends Controller
         $package->update($data);
         $this->syncPricings($request, $package);
         $this->syncDates($request, $package);
+        $this->syncCommissions($request, $package);
 
         return redirect()->route('manage.packages.edit', $package)->with('ok', 'Package updated.');
     }
@@ -154,6 +156,7 @@ class PackageController extends Controller
                 'tier_name'    => $row['tier_name'],
                 'adult_price'  => $row['adult_price'] ?? 0,
                 'child_price'  => $row['child_price'] ?? 0,
+                'senior_price' => $row['senior_price'] ?? 0,
                 'infant_price' => $row['infant_price'] ?? 0,
                 'promo_price'  => $row['promo_price'] ?: null,
                 'early_bird_price' => $row['early_bird_price'] ?: null,
@@ -161,6 +164,36 @@ class PackageController extends Controller
                 'group_min'    => $row['group_min'] ?: null,
                 'group_discount_percent' => $row['group_discount_percent'] ?: null,
                 'is_default'   => (string) $i === (string) $default,
+            ]);
+        }
+    }
+
+    private function syncCommissions(Request $request, Package $package): void
+    {
+        $rows = $request->input('commissions', []);
+        $package->commissionLevels()->delete();
+
+        $hqDone = false;
+        foreach ($rows as $row) {
+            $isHq  = ! empty($row['is_hq']);
+            $level = $isHq ? 0 : (int) ($row['level'] ?? 0);
+            if ($isHq) {
+                if ($hqDone) {
+                    continue; // only one HQ override per package
+                }
+                $hqDone = true;
+            } elseif ($level < 1) {
+                continue;
+            }
+            $package->commissionLevels()->create([
+                'level'        => $level,
+                'is_hq'        => $isHq,
+                'rate_type'    => ($row['rate_type'] ?? 'percent') === 'fixed' ? 'fixed' : 'percent',
+                'adult_value'  => $row['adult_value'] ?? 0,
+                'child_value'  => $row['child_value'] ?? 0,
+                'senior_value' => $row['senior_value'] ?? 0,
+                'infant_value' => $row['infant_value'] ?? 0,
+                'active'       => ! isset($row['active']) || $row['active'],
             ]);
         }
     }

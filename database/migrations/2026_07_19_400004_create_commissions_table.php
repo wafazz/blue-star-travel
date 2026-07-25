@@ -15,6 +15,8 @@ return new class extends Migration
             $table->foreignId('source_agent_id')->nullable()->constrained('users')->nullOnDelete(); // the selling agent
             $table->unsignedInteger('level');
             $table->boolean('is_orphan')->default(false); // no upline at this level → reserved HQ
+            $table->boolean('is_hq')->default(false);     // company/HQ override line (always earned by HQ)
+            $table->enum('rate_type', ['percent', 'fixed'])->default('percent');
             $table->decimal('base_amount', 12, 2)->default(0);
             $table->decimal('percent', 5, 2)->default(0);
             $table->decimal('amount', 12, 2)->default(0);

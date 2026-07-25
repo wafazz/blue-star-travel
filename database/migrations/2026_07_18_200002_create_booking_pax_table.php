@@ -12,7 +12,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('booking_id')->constrained('bookings')->cascadeOnDelete();
             $table->string('name');
-            $table->enum('type', ['adult', 'child', 'infant'])->default('adult');
+            $table->enum('type', ['adult', 'child', 'senior', 'infant'])->default('adult');
             $table->string('ic_passport_no')->nullable();
             $table->date('dob')->nullable();
             $table->string('nationality')->nullable();

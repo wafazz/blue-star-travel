@@ -20,7 +20,7 @@
         <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line)">
           <div style="width:{{ 6 + $r->depth * 14 }}px"></div>
           <div style="width:36px;height:36px;border-radius:11px;background:linear-gradient(135deg,#1466ff,#0b3fd1);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;flex:0 0 auto">{{ strtoupper(substr($r->name, 0, 1)) }}</div>
-          <div style="flex:1"><div style="font-weight:700;font-size:13.5px">{{ $r->name }}</div><div class="m" style="font-size:11px">{{ $r->agent_code ?? 'no code' }} · {{ ucfirst($r->agent_tier) }}</div></div>
+          <div style="flex:1"><div style="font-weight:700;font-size:13.5px">{{ $r->name }}</div><div class="m" style="font-size:11px">{{ $r->agent_code ?? 'no code' }} · {{ \App\Models\User::tierLabelFor($r->agent_tier) }}</div></div>
           <span class="badge b-{{ $r->depth == 1 ? 'success' : 'secondary' }}">L{{ $r->depth }}</span>
         </div>
       @empty

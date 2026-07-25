@@ -125,6 +125,7 @@ class CatalogSeeder extends Seeder
                 'tier_name'    => 'Standard',
                 'adult_price'  => $p['adult'],
                 'child_price'  => $p['child'],
+                'senior_price' => round($p['adult'] * 0.9),   // senior-citizen fare
                 'infant_price' => $p['infant'],
                 'promo_price'  => $p['promo'],
                 'group_min'    => 10,
@@ -135,9 +136,21 @@ class CatalogSeeder extends Seeder
                 'tier_name'    => 'Deluxe',
                 'adult_price'  => round($p['adult'] * 1.25),
                 'child_price'  => round($p['child'] * 1.25),
+                'senior_price' => round($p['adult'] * 1.25 * 0.9),
                 'infant_price' => $p['infant'],
                 'is_default'   => false,
             ]);
+
+            // Per-package agent commission — demonstrates the two payout modes.
+            // PKG-0001 (showcase) is deliberately left empty so it uses the global default levels.
+            $package->commissionLevels()->delete();
+            if ($seq === 2) { // Bali — percentage of each pax's fare
+                $package->commissionLevels()->create(['level' => 1, 'rate_type' => 'percent', 'adult_value' => 10, 'child_value' => 6, 'senior_value' => 8, 'infant_value' => 0]);
+                $package->commissionLevels()->create(['level' => 2, 'rate_type' => 'percent', 'adult_value' => 5, 'child_value' => 3, 'senior_value' => 4, 'infant_value' => 0]);
+            } elseif ($seq === 3) { // Tokyo — flat RM per pax
+                $package->commissionLevels()->create(['level' => 1, 'rate_type' => 'fixed', 'adult_value' => 300, 'child_value' => 150, 'senior_value' => 200, 'infant_value' => 0]);
+                $package->commissionLevels()->create(['level' => 2, 'rate_type' => 'fixed', 'adult_value' => 120, 'child_value' => 60, 'senior_value' => 80, 'infant_value' => 0]);
+            }
 
             $package->dates()->delete();
             foreach ([30, 60, 90] as $offset) {

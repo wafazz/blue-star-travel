@@ -11,7 +11,7 @@ return new class extends Migration
         Schema::table('users', function (Blueprint $table) {
             $table->foreignId('referrer_id')->nullable()->after('role')->constrained('users')->nullOnDelete();
             $table->string('agent_code')->nullable()->unique()->after('referrer_id');
-            $table->enum('agent_tier', ['silver', 'gold', 'platinum'])->default('silver')->after('agent_code');
+            $table->enum('agent_tier', ['agent', 'assistant_mentor', 'mentor'])->default('agent')->after('agent_code');
         });
     }
 

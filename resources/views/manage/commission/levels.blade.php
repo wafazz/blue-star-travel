@@ -46,6 +46,32 @@
         </form>
       </div>
 
+      <div class="card p-3 p-lg-4 mb-3">
+        <h6 class="fw-bold mb-1">🏢 Default HQ Commission</h6>
+        <div class="small text-secondary mb-3">The company's own cut on <strong>every</strong> agent sale, on top of the upline cascade. A package can override this with its own HQ level.</div>
+        <form method="POST" action="{{ route('manage.commission.hq') }}">
+          @csrf
+          <div class="form-check form-switch mb-3">
+            <input class="form-check-input" type="checkbox" name="active" id="hqActive" value="1" @checked($hq['active'])>
+            <label class="form-check-label small fw-semibold" for="hqActive">Enable HQ commission</label>
+          </div>
+          <label class="form-label small fw-semibold">Payout Type</label>
+          <select name="rate_type" id="hqRate" class="form-select form-select-sm mb-3" onchange="hqUnit()">
+            <option value="percent" @selected($hq['rate_type'] === 'percent')>Percentage (%)</option>
+            <option value="fixed" @selected($hq['rate_type'] === 'fixed')>Fixed (RM)</option>
+          </select>
+          <div class="row g-2">
+            @foreach (['adult' => 'Adult', 'child' => 'Child', 'senior' => 'Senior', 'infant' => 'Infant'] as $k => $lbl)
+              <div class="col-6">
+                <label class="form-label small mb-1">{{ $lbl }}</label>
+                <div class="input-group input-group-sm"><span class="input-group-text hq-unit">{{ $hq['rate_type'] === 'fixed' ? 'RM' : '%' }}</span><input type="number" step="0.01" min="0" name="{{ $k }}_value" value="{{ $hq[$k.'_value'] }}" class="form-control"></div>
+              </div>
+            @endforeach
+          </div>
+          <button class="btn btn-brand w-100 mt-3">Save HQ Commission</button>
+        </form>
+      </div>
+
       <div class="card p-3 p-lg-4">
         <h6 class="fw-bold mb-3">Recruitment Depth Cap</h6>
         <form method="POST" action="{{ route('manage.commission.settings') }}">
@@ -58,4 +84,10 @@
       </div>
     </div>
   </div>
+  <script>
+    function hqUnit(){
+      const u = document.getElementById('hqRate').value === 'fixed' ? 'RM' : '%';
+      document.querySelectorAll('.hq-unit').forEach(el => el.textContent = u);
+    }
+  </script>
 @endsection

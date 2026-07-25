@@ -58,7 +58,7 @@
               <tr>
                 <td>{{ $a->rank }}</td>
                 <td class="fw-semibold">{{ $a->name }}</td>
-                <td><span class="badge text-bg-secondary">{{ ucfirst($a->agent_tier) }}</span></td>
+                <td><span class="badge text-bg-secondary">{{ \App\Models\User::tierLabelFor($a->agent_tier) }}</span></td>
                 <td class="text-end">{{ $a->bookings }}</td>
                 <td class="text-end fw-semibold">RM {{ number_format($a->sales, 2) }}</td>
               </tr>

@@ -8,6 +8,7 @@
   if (empty($pricings)) { $pricings = [['tier_name' => 'Standard', 'is_default' => true]]; }
   $defaultPricing = old('default_pricing', collect($pricings)->search(fn ($p) => ! empty($p['is_default'])) ?: 0);
   $dates = old('dates', $package->exists ? $package->dates->toArray() : []);
+  $commissions = old('commissions', $package->exists ? $package->commissionLevels->sortBy('level')->values()->toArray() : []);
 @endphp
 
 @section('content')
@@ -103,6 +104,24 @@
             </table>
           </div>
         </div>
+
+        <!-- Agent commission (per package) -->
+        <div class="card p-4">
+          <div class="d-flex justify-content-between align-items-center mb-1">
+            <h6 class="fw-bold mb-0">💰 Agent Commission</h6>
+            <button type="button" class="btn btn-sm btn-outline-primary" onclick="addCommission()">＋ Add Level</button>
+          </div>
+          <div class="small text-secondary mb-2">
+            Per-level MLM payout for this package. Toggle each level between <strong>Percentage</strong> (of that pax's fare)
+            or <strong>Fixed RM</strong> (flat per pax), with separate values for adult / child / senior / infant.
+            The number of <strong>active</strong> levels sets the cascade depth. Leave empty to use the global default levels.
+          </div>
+          <div id="commissionRows" class="d-flex flex-column gap-3">
+            @foreach ($commissions as $i => $c)
+              @include('manage.packages.partials.commission-row', ['i' => $i, 'c' => $c])
+            @endforeach
+          </div>
+        </div>
       </div>
 
       <!-- Sidebar -->
@@ -161,10 +180,12 @@
 
   <template id="pricingTpl">@include('manage.packages.partials.pricing-row', ['i' => '__I__', 'p' => [], 'defaultPricing' => -1])</template>
   <template id="dateTpl">@include('manage.packages.partials.date-row', ['i' => '__I__', 'd' => []])</template>
+  <template id="commissionTpl">@include('manage.packages.partials.commission-row', ['i' => '__I__', 'c' => []])</template>
 
   <script>
     let pIdx = {{ count($pricings) }};
     let dIdx = {{ count($dates) }};
+    let cIdx = {{ count($commissions) }};
     function addPricing(){
       const html = document.getElementById('pricingTpl').innerHTML.replaceAll('__I__', pIdx++);
       document.getElementById('pricingRows').insertAdjacentHTML('beforeend', html);
@@ -173,6 +194,20 @@
       const html = document.getElementById('dateTpl').innerHTML.replaceAll('__I__', dIdx++);
       document.getElementById('dateRows').insertAdjacentHTML('beforeend', html);
     }
+    function addCommission(){
+      const html = document.getElementById('commissionTpl').innerHTML.replaceAll('__I__', cIdx++);
+      document.getElementById('commissionRows').insertAdjacentHTML('beforeend', html);
+    }
+    function onRateChange(sel){
+      const unit = sel.value === 'fixed' ? 'RM' : '%';
+      sel.closest('.commission-row').querySelectorAll('.unit-adorn').forEach(el => el.textContent = unit);
+    }
+    function onHqChange(cb){
+      const lvl = cb.closest('.commission-row').querySelector('input[name*="[level]"]');
+      if (cb.checked){ lvl.value = 0; lvl.disabled = true; lvl.classList.add('bg-light'); }
+      else { lvl.disabled = false; lvl.classList.remove('bg-light'); if (!lvl.value || lvl.value === '0') lvl.value = ''; }
+    }
+    document.querySelectorAll('.commission-row .hq-toggle:checked').forEach(onHqChange);
     function removeRow(btn, sel){ btn.closest(sel).remove(); }
     @if (empty($dates)) addDate(); @endif
   </script>

@@ -80,6 +80,9 @@
       @if ($booking->children > 0)
         <tr><td>{{ $booking->package->title }} — Child</td><td class="right">{{ $booking->children }}</td><td class="right">{{ number_format($booking->child_price, 2) }}</td><td class="right">{{ number_format($booking->children * $booking->child_price, 2) }}</td></tr>
       @endif
+      @if ($booking->seniors > 0)
+        <tr><td>{{ $booking->package->title }} — Senior</td><td class="right">{{ $booking->seniors }}</td><td class="right">{{ number_format($booking->senior_price, 2) }}</td><td class="right">{{ number_format($booking->seniors * $booking->senior_price, 2) }}</td></tr>
+      @endif
       @if ($booking->infants > 0)
         <tr><td>{{ $booking->package->title }} — Infant</td><td class="right">{{ $booking->infants }}</td><td class="right">{{ number_format($booking->infant_price, 2) }}</td><td class="right">{{ number_format($booking->infants * $booking->infant_price, 2) }}</td></tr>
       @endif

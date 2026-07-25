@@ -47,6 +47,7 @@ class BookingController extends Controller
             'travel_date'        => ['nullable', 'date'],
             'adults'             => ['required', 'integer', 'min:1', 'max:20'],
             'children'           => ['required', 'integer', 'min:0', 'max:20'],
+            'seniors'            => ['nullable', 'integer', 'min:0', 'max:20'],
             'infants'            => ['required', 'integer', 'min:0', 'max:20'],
             'notes'              => ['nullable', 'string', 'max:1000'],
             'coupon_code'        => ['nullable', 'string', 'max:50'],

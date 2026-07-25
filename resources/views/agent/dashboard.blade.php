@@ -218,11 +218,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
       </div>
 
       @php
-        $tierIcon = ['silver' => '🥈', 'gold' => '⭐', 'platinum' => '💎'][$user->agent_tier] ?? '⭐';
+        $tierIcon = \App\Models\User::TIER_ICONS[$user->agent_tier] ?? '🎖️';
         $toGo = max(0, $salesTarget - $achievedThisMonth);
       @endphp
       <div class="wallet">
-        <div class="chip">{{ $tierIcon }} {{ ucfirst($user->agent_tier) }} Agent</div>
+        <div class="chip">{{ $tierIcon }} {{ $user->tierLabel() }}</div>
         <div class="lbl">💰 Monthly Commission</div>
         <div class="amt">RM {{ number_format($monthlyCommission, 0) }}<small>.{{ substr(number_format($monthlyCommission, 2), -2) }}</small></div>
         <div class="sub">@if($toGo > 0)🎯 RM{{ number_format($toGo, 0) }} more in sales to hit your target @else🎉 Monthly target reached — bonus unlocked!@endif</div>
@@ -362,14 +362,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
           <div class="lb-item {{ $row->user_id === $user->id ? 'me' : '' }}">
             <div class="rankn {{ $row->rank == 1 ? 'top' : '' }}">{{ $row->rank }}</div>
             <div class="lb-av">{{ strtoupper(substr($row->name, 0, 2)) }}</div>
-            <div class="lb-name"><b>{{ $row->user_id === $user->id ? 'You (' . strtok($row->name, ' ') . ')' : $row->name }}</b><span>{{ ucfirst($row->agent_tier) }} Agent</span></div>
+            <div class="lb-name"><b>{{ $row->user_id === $user->id ? 'You (' . strtok($row->name, ' ') . ')' : $row->name }}</b><span>{{ \App\Models\User::tierLabelFor($row->agent_tier) }}</span></div>
             <div class="lb-amt"><b>RM {{ number_format($row->sales, 0) }}</b><span>this month</span></div>
           </div>
         @empty
           <div class="hint">No sales ranked yet this month. Close a booking to appear here!</div>
         @endforelse
         @if ($myRow && $myRow->rank > 5)
-          <div class="lb-item me"><div class="rankn">{{ $myRow->rank }}</div><div class="lb-av">{{ $user->initials() }}</div><div class="lb-name"><b>You ({{ strtok($user->name, ' ') }})</b><span>{{ ucfirst($user->agent_tier) }} Agent</span></div><div class="lb-amt"><b>RM {{ number_format($myRow->sales, 0) }}</b><span>this month</span></div></div>
+          <div class="lb-item me"><div class="rankn">{{ $myRow->rank }}</div><div class="lb-av">{{ $user->initials() }}</div><div class="lb-name"><b>You ({{ strtok($user->name, ' ') }})</b><span>{{ $user->tierLabel() }}</span></div><div class="lb-amt"><b>RM {{ number_format($myRow->sales, 0) }}</b><span>this month</span></div></div>
         @endif
       </div>
 
@@ -449,11 +449,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
         </div>
       </div>
       <div class="sec">
-        <div class="lb-item me"><div class="rankn">4</div><div class="lb-av">{{ $agent->initials() }}</div><div class="lb-name"><b>You ({{ strtok($agent->name, ' ') }})</b><span>Gold Agent · 🔥12-day streak</span></div><div class="lb-amt"><b>RM 8,450</b><span>this month</span></div></div>
-        <div class="lb-item"><div class="rankn">5</div><div class="lb-av">FZ</div><div class="lb-name"><b>Farid Zaki</b><span>Gold Agent</span></div><div class="lb-amt"><b>RM 7,980</b><span>this month</span></div></div>
-        <div class="lb-item"><div class="rankn">6</div><div class="lb-av">NA</div><div class="lb-name"><b>Nadia Amin</b><span>Silver Agent</span></div><div class="lb-amt"><b>RM 7,210</b><span>this month</span></div></div>
-        <div class="lb-item"><div class="rankn">7</div><div class="lb-av">KL</div><div class="lb-name"><b>Kevin Lim</b><span>Silver Agent</span></div><div class="lb-amt"><b>RM 6,540</b><span>this month</span></div></div>
-        <div class="lb-item"><div class="rankn">8</div><div class="lb-av">SH</div><div class="lb-name"><b>Siti Hajar</b><span>Silver Agent</span></div><div class="lb-amt"><b>RM 6,120</b><span>this month</span></div></div>
+        <div class="lb-item me"><div class="rankn">4</div><div class="lb-av">{{ $agent->initials() }}</div><div class="lb-name"><b>You ({{ strtok($agent->name, ' ') }})</b><span>Assistant Mentor · 🔥12-day streak</span></div><div class="lb-amt"><b>RM 8,450</b><span>this month</span></div></div>
+        <div class="lb-item"><div class="rankn">5</div><div class="lb-av">FZ</div><div class="lb-name"><b>Farid Zaki</b><span>Assistant Mentor</span></div><div class="lb-amt"><b>RM 7,980</b><span>this month</span></div></div>
+        <div class="lb-item"><div class="rankn">6</div><div class="lb-av">NA</div><div class="lb-name"><b>Nadia Amin</b><span>Agent</span></div><div class="lb-amt"><b>RM 7,210</b><span>this month</span></div></div>
+        <div class="lb-item"><div class="rankn">7</div><div class="lb-av">KL</div><div class="lb-name"><b>Kevin Lim</b><span>Agent</span></div><div class="lb-amt"><b>RM 6,540</b><span>this month</span></div></div>
+        <div class="lb-item"><div class="rankn">8</div><div class="lb-av">SH</div><div class="lb-name"><b>Siti Hajar</b><span>Agent</span></div><div class="lb-amt"><b>RM 6,120</b><span>this month</span></div></div>
         <div class="hint">🔔 You'll get a push notification when your rank changes.</div>
       </div>
     </div>
@@ -465,7 +465,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
         <div class="phead">
           <div class="pav">{{ $agent->initials() }}</div>
           <h2>{{ $agent->name }}</h2>
-          <div class="role">{{ $tierIcon }} {{ ucfirst($user->agent_tier) }} Agent · {{ $user->agent_code ?? '#AG-' . str_pad($agent->id, 4, '0', STR_PAD_LEFT) }}{{ $rankInfo['rank'] ? ' · Ranked #' . $rankInfo['rank'] : '' }}</div>
+          <div class="role">{{ $tierIcon }} {{ $user->tierLabel() }} · {{ $user->agent_code ?? '#AG-' . str_pad($agent->id, 4, '0', STR_PAD_LEFT) }}{{ $rankInfo['rank'] ? ' · Ranked #' . $rankInfo['rank'] : '' }}</div>
         </div>
         <div class="pstats">
           <div><b>{{ $stats['customers'] }}</b><span>Customers</span></div>

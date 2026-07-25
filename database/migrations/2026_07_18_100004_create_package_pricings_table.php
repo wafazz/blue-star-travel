@@ -14,6 +14,7 @@ return new class extends Migration
             $table->string('tier_name')->default('Standard');
             $table->decimal('adult_price', 10, 2)->default(0);
             $table->decimal('child_price', 10, 2)->default(0);
+            $table->decimal('senior_price', 10, 2)->default(0);
             $table->decimal('infant_price', 10, 2)->default(0);
             $table->decimal('promo_price', 10, 2)->nullable();
             $table->decimal('early_bird_price', 10, 2)->nullable();

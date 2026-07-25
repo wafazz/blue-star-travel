@@ -5,9 +5,10 @@
 
 @section('content')
   <div class="row g-3 mb-3">
-    <div class="col-6 col-lg-3"><div class="card p-3"><div class="fs-4 fw-bold text-warning">{{ $kpis['pending_count'] }}</div><div class="text-secondary small">Pending Entries</div></div></div>
+    <div class="col-6 col-lg-2"><div class="card p-3"><div class="fs-4 fw-bold text-warning">{{ $kpis['pending_count'] }}</div><div class="text-secondary small">Pending Entries</div></div></div>
     <div class="col-6 col-lg-3"><div class="card p-3"><div class="fs-4 fw-bold text-warning">RM {{ number_format($kpis['pending_amount'], 2) }}</div><div class="text-secondary small">Payable (pending)</div></div></div>
-    <div class="col-6 col-lg-3"><div class="card p-3"><div class="fs-4 fw-bold text-success">RM {{ number_format($kpis['approved_amount'], 2) }}</div><div class="text-secondary small">Approved</div></div></div>
+    <div class="col-6 col-lg-2"><div class="card p-3"><div class="fs-4 fw-bold text-success">RM {{ number_format($kpis['approved_amount'], 2) }}</div><div class="text-secondary small">Approved (agents)</div></div></div>
+    <div class="col-6 col-lg-2"><div class="card p-3"><div class="fs-4 fw-bold text-dark">RM {{ number_format($kpis['hq_amount'], 2) }}</div><div class="text-secondary small">HQ Commission</div></div></div>
     <div class="col-6 col-lg-3"><div class="card p-3"><div class="fs-4 fw-bold text-secondary">RM {{ number_format($kpis['orphan_amount'], 2) }}</div><div class="text-secondary small">Orphan → HQ</div></div></div>
   </div>
 
@@ -43,11 +44,11 @@
           @forelse ($commissions as $c)
             <tr>
               <td class="small"><a href="{{ route('manage.bookings.show', $c->booking_id) }}" class="text-decoration-none">{{ $c->booking?->booking_no }}</a></td>
-              <td class="small">@if($c->is_orphan)<span class="badge text-bg-secondary">HQ (orphan)</span>@else{{ $c->earner?->name ?? '—' }}@endif</td>
+              <td class="small">@if($c->is_hq)<span class="badge text-bg-dark">HQ (company)</span>@elseif($c->is_orphan)<span class="badge text-bg-secondary">HQ (orphan)</span>@else{{ $c->earner?->name ?? '—' }}@endif</td>
               <td class="small text-secondary">{{ $c->sourceAgent?->name ?? '—' }}</td>
-              <td><span class="badge text-bg-primary">L{{ $c->level }}</span></td>
+              <td>@if($c->is_hq)<span class="badge text-bg-dark">HQ</span>@else<span class="badge text-bg-primary">L{{ $c->level }}</span>@endif</td>
               <td class="text-end small">RM {{ number_format($c->base_amount, 2) }}</td>
-              <td class="small">{{ rtrim(rtrim(number_format($c->percent, 2), '0'), '.') }}%</td>
+              <td class="small">@if($c->rate_type === 'fixed')<span class="badge text-bg-light text-secondary">Fixed RM</span>@else{{ rtrim(rtrim(number_format($c->percent, 2), '0'), '.') }}%@endif</td>
               <td class="text-end fw-semibold">RM {{ number_format($c->amount, 2) }}</td>
               <td class="small">{{ $c->period }}</td>
               <td><span class="badge text-bg-{{ $c->statusBadge() }}">{{ ucfirst($c->status) }}</span></td>

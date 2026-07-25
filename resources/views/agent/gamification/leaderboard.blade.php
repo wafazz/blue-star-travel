@@ -20,7 +20,7 @@
             <div style="width:38px;height:38px;border-radius:12px;background:linear-gradient(135deg,#1466ff,#0b3fd1);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px">{{ strtoupper(substr($row->name, 0, 2)) }}</div>
             <div>
               <div class="n">{{ $row->user_id === ($me->user_id ?? 0) ? 'You (' . strtok($row->name, ' ') . ')' : $row->name }}</div>
-              <div class="m">{{ ucfirst($row->agent_tier) }} · {{ $row->bookings }} booking(s)</div>
+              <div class="m">{{ \App\Models\User::tierLabelFor($row->agent_tier) }} · {{ $row->bookings }} booking(s)</div>
             </div>
           </div>
           <div style="text-align:right"><div style="font-weight:800">RM {{ number_format($row->sales, 0) }}</div><div class="m" style="font-size:11px">this month</div></div>

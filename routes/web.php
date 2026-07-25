@@ -15,6 +15,7 @@ use App\Http\Controllers\Provider\DashboardController as ProviderDashboard;
 use App\Http\Controllers\Manage\ProviderController as ManageProvider;
 use App\Http\Controllers\Manage\PackageController as ManagePackage;
 use App\Http\Controllers\Manage\CustomerController as ManageCustomer;
+use App\Http\Controllers\Manage\AgentController as ManageAgent;
 use App\Http\Controllers\Manage\CompanyController as ManageCompany;
 use App\Http\Controllers\Manage\BookingController as ManageBooking;
 use App\Http\Controllers\Agent\BookingController as AgentBooking;
@@ -169,14 +170,26 @@ Route::middleware(['auth', 'role:admin,super_admin'])->prefix('admin')->name('ad
 Route::middleware(['auth', 'role:super_admin,hq,admin'])->group(function () {
     Route::post('/staff/logout', [LoginController::class, 'logout'])->defaults('portal', 'staff')->name('staff.logout');
 
-    // Core Catalog management (shared by HQ + Admin)
-    Route::prefix('manage')->name('manage.')->group(function () {
+    // Core Catalog management (shared by HQ + Admin). `perm` enforces per-section RBAC for admin staff.
+    Route::middleware('perm')->prefix('manage')->name('manage.')->group(function () {
+        // Staff & access control — super_admin & hq only (not delegatable).
+        Route::middleware('role:super_admin,hq')->group(function () {
+            Route::resource('staff', \App\Http\Controllers\Manage\StaffController::class)->except('show');
+        });
+
         Route::get('company', [ManageCompany::class, 'edit'])->name('company.edit');
         Route::put('company', [ManageCompany::class, 'update'])->name('company.update');
 
         Route::resource('providers', ManageProvider::class)->except('show');
         Route::resource('customers', ManageCustomer::class)->except('show');
         Route::resource('packages', ManagePackage::class);
+
+        // Agents (MLM network)
+        Route::get('agents', [ManageAgent::class, 'index'])->name('agents.index');
+        Route::post('agents/tier-rules', [ManageAgent::class, 'saveTierRules'])->name('agents.tier-rules');
+        Route::post('agents/recalculate', [ManageAgent::class, 'recalculate'])->name('agents.recalculate');
+        Route::get('agents/{agent}', [ManageAgent::class, 'show'])->name('agents.show');
+        Route::put('agents/{agent}', [ManageAgent::class, 'update'])->name('agents.update');
 
         // Booking engine
         Route::get('bookings', [ManageBooking::class, 'index'])->name('bookings.index');
@@ -214,6 +227,7 @@ Route::middleware(['auth', 'role:super_admin,hq,admin'])->group(function () {
         Route::put('commission-levels/{level}', [ManageCommission::class, 'updateLevel'])->name('commission.levels.update');
         Route::delete('commission-levels/{level}', [ManageCommission::class, 'destroyLevel'])->name('commission.levels.destroy');
         Route::post('commission-settings', [ManageCommission::class, 'saveSettings'])->name('commission.settings');
+        Route::post('commission-hq', [ManageCommission::class, 'saveHqCommission'])->name('commission.hq');
 
         // Withdrawals
         Route::get('withdrawals', [ManageWithdrawal::class, 'index'])->name('withdrawals.index');

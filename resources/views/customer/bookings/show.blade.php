@@ -17,7 +17,7 @@
         <span style="font-size:12px;color:var(--muted)">{{ optional($booking->travel_date ?? $booking->packageDate?->depart_date)->format('d M Y') ?? 'Date TBC' }}</span>
       </div>
       <div class="sum"><span style="color:var(--muted)">Destination</span><span style="font-weight:700">{{ $booking->package?->destination ?? '—' }}</span></div>
-      <div class="sum"><span style="color:var(--muted)">Travellers</span><span style="font-weight:700">{{ $booking->adults }}A · {{ $booking->children }}C · {{ $booking->infants }}I</span></div>
+      <div class="sum"><span style="color:var(--muted)">Travellers</span><span style="font-weight:700">{{ $booking->adults }}A · {{ $booking->children }}C{{ $booking->seniors ? ' · ' . $booking->seniors . 'S' : '' }} · {{ $booking->infants }}I</span></div>
       <div class="sum"><span style="color:var(--muted)">Booked on</span><span style="font-weight:700">{{ $booking->created_at->format('d M Y') }}</span></div>
     </div>
 

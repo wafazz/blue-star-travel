@@ -20,6 +20,10 @@
       <input type="number" step="0.01" name="pricings[{{ $i }}][child_price]" value="{{ data_get($p, 'child_price') }}" class="form-control form-control-sm">
     </div>
     <div class="col-4 col-md-2">
+      <label class="form-label small mb-1">Senior</label>
+      <input type="number" step="0.01" name="pricings[{{ $i }}][senior_price]" value="{{ data_get($p, 'senior_price') }}" class="form-control form-control-sm" placeholder="= adult">
+    </div>
+    <div class="col-4 col-md-2">
       <label class="form-label small mb-1">Infant</label>
       <input type="number" step="0.01" name="pricings[{{ $i }}][infant_price]" value="{{ data_get($p, 'infant_price') }}" class="form-control form-control-sm">
     </div>

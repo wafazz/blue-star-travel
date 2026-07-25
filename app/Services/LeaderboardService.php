@@ -35,7 +35,7 @@ class LeaderboardService
             'rank'       => $i + 1,
             'user_id'    => $r->agent_id,
             'name'       => $users[$r->agent_id]->name ?? 'Agent',
-            'agent_tier' => $users[$r->agent_id]->agent_tier ?? 'silver',
+            'agent_tier' => $users[$r->agent_id]->agent_tier ?? 'agent',
             'sales'      => (float) $r->sales,
             'bookings'   => (int) $r->bookings,
         ])->values();

@@ -12,6 +12,7 @@
       'tier_name'   => $pr->tier_name,
       'adult_price' => (float) ($pr->promo_price ?? $pr->adult_price),
       'child_price' => (float) $pr->child_price,
+      'senior_price'=> (float) ($pr->senior_price ?: ($pr->promo_price ?? $pr->adult_price)),
       'infant_price'=> (float) $pr->infant_price,
       'is_default'  => (bool) $pr->is_default,
     ])->values(),
@@ -93,9 +94,10 @@
           <button type="button" class="btn btn-sm btn-outline-primary" onclick="addPax()">＋ Add pax detail</button>
         </div>
         <div class="row g-3 mb-3">
-          <div class="col-4"><label class="form-label small fw-semibold">Adults</label><input type="number" name="adults" id="adults" value="{{ old('adults', 1) }}" min="1" class="form-control"></div>
-          <div class="col-4"><label class="form-label small fw-semibold">Children</label><input type="number" name="children" id="children" value="{{ old('children', 0) }}" min="0" class="form-control"></div>
-          <div class="col-4"><label class="form-label small fw-semibold">Infants</label><input type="number" name="infants" id="infants" value="{{ old('infants', 0) }}" min="0" class="form-control"></div>
+          <div class="col-3"><label class="form-label small fw-semibold">Adults</label><input type="number" name="adults" id="adults" value="{{ old('adults', 1) }}" min="1" class="form-control"></div>
+          <div class="col-3"><label class="form-label small fw-semibold">Children</label><input type="number" name="children" id="children" value="{{ old('children', 0) }}" min="0" class="form-control"></div>
+          <div class="col-3"><label class="form-label small fw-semibold">Seniors</label><input type="number" name="seniors" id="seniors" value="{{ old('seniors', 0) }}" min="0" class="form-control"></div>
+          <div class="col-3"><label class="form-label small fw-semibold">Infants</label><input type="number" name="infants" id="infants" value="{{ old('infants', 0) }}" min="0" class="form-control"></div>
         </div>
         <div id="paxRows"></div>
       </div>
@@ -111,6 +113,7 @@
         <h6 class="fw-bold mb-3">Price Summary</h6>
         <div class="d-flex justify-content-between small mb-2"><span class="text-secondary">Adults × <span id="s-adults">1</span></span><span id="s-adult-line">RM 0.00</span></div>
         <div class="d-flex justify-content-between small mb-2"><span class="text-secondary">Children × <span id="s-children">0</span></span><span id="s-child-line">RM 0.00</span></div>
+        <div class="d-flex justify-content-between small mb-2"><span class="text-secondary">Seniors × <span id="s-seniors">0</span></span><span id="s-senior-line">RM 0.00</span></div>
         <div class="d-flex justify-content-between small mb-2"><span class="text-secondary">Infants × <span id="s-infants">0</span></span><span id="s-infant-line">RM 0.00</span></div>
         <hr class="my-2">
         <div class="d-flex justify-content-between mb-2"><span class="text-secondary small">Subtotal</span><span class="fw-semibold" id="s-subtotal">RM 0.00</span></div>
@@ -166,14 +169,15 @@
 
     function recalc() {
       const pr = currentPricing();
-      const a = +$('adults').value || 0, c = +$('children').value || 0, i = +$('infants').value || 0;
-      const ap = pr ? pr.adult_price : 0, cp = pr ? pr.child_price : 0, ip = pr ? pr.infant_price : 0;
-      const aLine = a * ap, cLine = c * cp, iLine = i * ip;
-      const sub = aLine + cLine + iLine;
+      const a = +$('adults').value || 0, c = +$('children').value || 0, s = +$('seniors').value || 0, i = +$('infants').value || 0;
+      const ap = pr ? pr.adult_price : 0, cp = pr ? pr.child_price : 0, sp = pr ? pr.senior_price : 0, ip = pr ? pr.infant_price : 0;
+      const aLine = a * ap, cLine = c * cp, sLine = s * sp, iLine = i * ip;
+      const sub = aLine + cLine + sLine + iLine;
       const disc = +$('discount').value || 0;
-      $('s-adults').textContent = a; $('s-children').textContent = c; $('s-infants').textContent = i;
+      $('s-adults').textContent = a; $('s-children').textContent = c; $('s-seniors').textContent = s; $('s-infants').textContent = i;
       $('s-adult-line').textContent = money(aLine);
       $('s-child-line').textContent = money(cLine);
+      $('s-senior-line').textContent = money(sLine);
       $('s-infant-line').textContent = money(iLine);
       $('s-subtotal').textContent = money(sub);
       $('s-total').textContent = money(Math.max(0, sub - disc));
@@ -186,7 +190,7 @@
       row.innerHTML = `
         <div class="col-4"><input name="pax[${paxIdx}][name]" class="form-control form-control-sm" placeholder="Full name"></div>
         <div class="col-3"><select name="pax[${paxIdx}][type]" class="form-select form-select-sm">
-          <option value="adult">Adult</option><option value="child">Child</option><option value="infant">Infant</option></select></div>
+          <option value="adult">Adult</option><option value="child">Child</option><option value="senior">Senior</option><option value="infant">Infant</option></select></div>
         <div class="col-3"><input name="pax[${paxIdx}][ic_passport_no]" class="form-control form-control-sm" placeholder="IC / Passport"></div>
         <div class="col-2"><button type="button" class="btn btn-sm btn-outline-danger w-100" onclick="this.closest('.row').remove()">✕</button></div>`;
       wrap.appendChild(row);
@@ -194,7 +198,7 @@
     }
 
     ['package_id'].forEach(id => $(id).addEventListener('change', fillPackage));
-    ['package_pricing_id','adults','children','infants','discount'].forEach(id => $(id).addEventListener('input', recalc));
+    ['package_pricing_id','adults','children','seniors','infants','discount'].forEach(id => $(id).addEventListener('input', recalc));
     $('package_date_id').addEventListener('change', function () {
       const dep = this.selectedOptions[0]?.dataset.depart;
       if (dep && !$('travel_date').value) $('travel_date').value = dep;

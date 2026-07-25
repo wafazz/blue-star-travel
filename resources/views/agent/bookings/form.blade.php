@@ -7,7 +7,9 @@
     'pricings' => $p->pricings->map(fn ($pr) => [
       'id' => $pr->id, 'tier_name' => $pr->tier_name,
       'adult_price' => (float) ($pr->promo_price ?? $pr->adult_price),
-      'child_price' => (float) $pr->child_price, 'infant_price' => (float) $pr->infant_price,
+      'child_price' => (float) $pr->child_price,
+      'senior_price' => (float) ($pr->senior_price ?: ($pr->promo_price ?? $pr->adult_price)),
+      'infant_price' => (float) $pr->infant_price,
       'is_default' => (bool) $pr->is_default,
     ])->values(),
     'dates' => $p->dates->map(fn ($d) => [
@@ -57,6 +59,7 @@
       <div class="row2">
         <div><label class="lbl">Adults</label><input type="number" name="adults" id="adults" value="{{ old('adults', 1) }}" min="1" class="inp"></div>
         <div><label class="lbl">Children</label><input type="number" name="children" id="children" value="{{ old('children', 0) }}" min="0" class="inp"></div>
+        <div><label class="lbl">Seniors</label><input type="number" name="seniors" id="seniors" value="{{ old('seniors', 0) }}" min="0" class="inp"></div>
         <div><label class="lbl">Infants</label><input type="number" name="infants" id="infants" value="{{ old('infants', 0) }}" min="0" class="inp"></div>
       </div>
       <label class="lbl">Coupon code (optional)</label>
@@ -69,6 +72,7 @@
       <h3>Summary</h3>
       <div class="sum"><span>Adults × <span id="s-adults">1</span></span><span id="s-adult-line">RM 0</span></div>
       <div class="sum"><span>Children × <span id="s-children">0</span></span><span id="s-child-line">RM 0</span></div>
+      <div class="sum"><span>Seniors × <span id="s-seniors">0</span></span><span id="s-senior-line">RM 0</span></div>
       <div class="sum"><span>Infants × <span id="s-infants">0</span></span><span id="s-infant-line">RM 0</span></div>
       <div class="sum total"><span>Total</span><span id="s-total">RM 0</span></div>
     </div>
@@ -97,14 +101,14 @@
     }
     function recalc() {
       const pr = currentPricing();
-      const a = +$('adults').value || 0, c = +$('children').value || 0, i = +$('infants').value || 0;
-      const ap = pr ? pr.adult_price : 0, cp = pr ? pr.child_price : 0, ip = pr ? pr.infant_price : 0;
-      $('s-adults').textContent = a; $('s-children').textContent = c; $('s-infants').textContent = i;
-      $('s-adult-line').textContent = money(a * ap); $('s-child-line').textContent = money(c * cp); $('s-infant-line').textContent = money(i * ip);
-      $('s-total').textContent = money(a * ap + c * cp + i * ip);
+      const a = +$('adults').value || 0, c = +$('children').value || 0, s = +$('seniors').value || 0, i = +$('infants').value || 0;
+      const ap = pr ? pr.adult_price : 0, cp = pr ? pr.child_price : 0, sp = pr ? pr.senior_price : 0, ip = pr ? pr.infant_price : 0;
+      $('s-adults').textContent = a; $('s-children').textContent = c; $('s-seniors').textContent = s; $('s-infants').textContent = i;
+      $('s-adult-line').textContent = money(a * ap); $('s-child-line').textContent = money(c * cp); $('s-senior-line').textContent = money(s * sp); $('s-infant-line').textContent = money(i * ip);
+      $('s-total').textContent = money(a * ap + c * cp + s * sp + i * ip);
     }
     $('package_id').addEventListener('change', fillPackage);
-    ['package_pricing_id','adults','children','infants'].forEach(id => $(id).addEventListener('input', recalc));
+    ['package_pricing_id','adults','children','seniors','infants'].forEach(id => $(id).addEventListener('input', recalc));
     fillPackage();
   </script>
 @endsection

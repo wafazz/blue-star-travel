@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Booking;
 use App\Models\Commission;
 use App\Models\CommissionLevel;
+use App\Models\Setting;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
@@ -36,35 +37,168 @@ class CommissionService
             return;
         }
 
-        $levels = CommissionLevel::activeOrdered();
-        if ($levels->isEmpty()) {
+        // Per-package commission (dynamic depth, fixed/percent toggle, per pax-type) takes
+        // precedence; a package with no agent rows falls back to the global default levels.
+        $pkgLevels   = optional($booking->package)->activeCommissionLevels() ?? collect();
+        $agentLevels = $pkgLevels->where('is_hq', false)->values();
+        $rows = $agentLevels->isNotEmpty()
+            ? $this->packageRows($booking, $agentLevels)
+            : $this->globalRows($booking);
+
+        // Company / HQ override line — always earned by HQ on top of the agent cascade.
+        // Package-specific HQ level wins; otherwise the global default HQ commission applies.
+        $hqRow = $this->hqRow($booking, $pkgLevels->firstWhere('is_hq', true));
+
+        if (empty($rows) && ! $hqRow) {
             return;
         }
 
-        $base   = (float) $booking->total_amount;
-        $period = now()->format('Y-m');
-        $upline = $this->tree->uplineChain($sellerId, $levels->max('level'))
-            ->keyBy('depth'); // depth => row(user_id)
+        $period   = now()->format('Y-m');
+        $maxLevel = empty($rows) ? 0 : max(array_column($rows, 'level'));
+        $upline   = $this->tree->uplineChain($sellerId, $maxLevel)->keyBy('depth');
 
-        DB::transaction(function () use ($booking, $levels, $upline, $base, $period, $sellerId) {
-            foreach ($levels as $lvl) {
-                $earnerId = optional($upline->get($lvl->level))->user_id;
-                $amount = round($base * (float) $lvl->percent / 100, 2);
+        DB::transaction(function () use ($booking, $rows, $hqRow, $upline, $period, $sellerId) {
+            foreach ($rows as $row) {
+                $earnerId = optional($upline->get($row['level']))->user_id;
 
                 Commission::create([
                     'booking_id'      => $booking->id,
                     'earner_id'       => $earnerId,               // null → orphan/HQ
                     'source_agent_id' => $sellerId,
-                    'level'           => $lvl->level,
+                    'level'           => $row['level'],
                     'is_orphan'       => $earnerId === null,
-                    'base_amount'     => $base,
-                    'percent'         => $lvl->percent,
-                    'amount'          => $amount,
+                    'rate_type'       => $row['rate_type'],
+                    'base_amount'     => $row['base'],
+                    'percent'         => $row['percent'],
+                    'amount'          => $row['amount'],
+                    'status'          => 'pending',
+                    'period'          => $period,
+                ]);
+            }
+
+            if ($hqRow) {
+                Commission::create([
+                    'booking_id'      => $booking->id,
+                    'earner_id'       => null,                    // company account (no agent wallet)
+                    'source_agent_id' => $sellerId,
+                    'level'           => 0,
+                    'is_orphan'       => false,
+                    'is_hq'           => true,
+                    'rate_type'       => $hqRow['rate_type'],
+                    'base_amount'     => $hqRow['base'],
+                    'percent'         => $hqRow['percent'],
+                    'amount'          => $hqRow['amount'],
                     'status'          => 'pending',
                     'period'          => $period,
                 ]);
             }
         });
+    }
+
+    /** Compute one commission line from a rate_type + a per-pax value resolver. */
+    private function computeLine(string $rateType, callable $valueFor, array $pax): array
+    {
+        $amount = 0.0;
+        $base   = 0.0;
+        foreach ($pax as $type => $p) {
+            if ($p['count'] <= 0) {
+                continue;
+            }
+            $value = (float) $valueFor($type);
+            if ($rateType === 'fixed') {
+                $amount += $p['count'] * $value;                 // flat RM per pax
+            } else {
+                $lineBase = $p['count'] * $p['price'];
+                $base     += $lineBase;
+                $amount   += $lineBase * $value / 100;           // % of that pax's fare
+            }
+        }
+        $amount = round($amount, 2);
+        if ($rateType === 'fixed') {
+            $base = $amount; // no percentage base for a flat payout
+        }
+
+        return [
+            'rate_type' => $rateType,
+            'base'      => round($base, 2),
+            'percent'   => $rateType === 'percent' && $base > 0 ? round($amount / $base * 100, 2) : 0,
+            'amount'    => $amount,
+        ];
+    }
+
+    /** Resolve + compute the HQ override line (package level, else global default). Null when disabled/zero. */
+    private function hqRow(Booking $booking, $pkgHqLevel): ?array
+    {
+        if ($pkgHqLevel) {
+            $rateType = $pkgHqLevel->rate_type;
+            $valueFor = fn ($type) => $pkgHqLevel->valueFor($type);
+        } else {
+            $cfg = $this->hqDefault();
+            if (! $cfg || empty($cfg['active'])) {
+                return null;
+            }
+            $rateType = ($cfg['rate_type'] ?? 'percent') === 'fixed' ? 'fixed' : 'percent';
+            $valueFor = fn ($type) => (float) ($cfg[$type . '_value'] ?? 0);
+        }
+
+        $line = $this->computeLine($rateType, $valueFor, $this->paxBreakdown($booking));
+
+        return $line['amount'] > 0 ? $line : null;
+    }
+
+    /** Global default HQ commission config from settings, or null. */
+    public function hqDefault(): ?array
+    {
+        $raw = Setting::get('hq_commission');
+        if (! $raw) {
+            return null;
+        }
+
+        return is_array($raw) ? $raw : (json_decode($raw, true) ?: null);
+    }
+
+    /** Pax-type breakdown for a booking → [type => ['count' => n, 'price' => rm]]. */
+    private function paxBreakdown(Booking $booking): array
+    {
+        return [
+            'adult'  => ['count' => (int) $booking->adults,   'price' => (float) $booking->adult_price],
+            'child'  => ['count' => (int) $booking->children, 'price' => (float) $booking->child_price],
+            'senior' => ['count' => (int) $booking->seniors,  'price' => (float) $booking->senior_price],
+            'infant' => ['count' => (int) $booking->infants,  'price' => (float) $booking->infant_price],
+        ];
+    }
+
+    /** Build per-level commission rows from the package's own configuration. */
+    private function packageRows(Booking $booking, $pkgLevels): array
+    {
+        $pax  = $this->paxBreakdown($booking);
+        $rows = [];
+
+        foreach ($pkgLevels as $lvl) {
+            $rows[] = ['level' => (int) $lvl->level]
+                + $this->computeLine($lvl->rate_type, fn ($type) => $lvl->valueFor($type), $pax);
+        }
+
+        return $rows;
+    }
+
+    /** Legacy fallback — flat percent of the booking total, from the global commission_levels table. */
+    private function globalRows(Booking $booking): array
+    {
+        $levels = CommissionLevel::activeOrdered();
+        if ($levels->isEmpty()) {
+            return [];
+        }
+
+        $base = (float) $booking->total_amount;
+
+        return $levels->map(fn ($lvl) => [
+            'level'     => (int) $lvl->level,
+            'rate_type' => 'percent',
+            'base'      => $base,
+            'percent'   => (float) $lvl->percent,
+            'amount'    => round($base * (float) $lvl->percent / 100, 2),
+        ])->all();
     }
 
     public function approve(Commission $commission, ?User $actor): void

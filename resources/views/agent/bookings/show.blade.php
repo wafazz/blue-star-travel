@@ -17,7 +17,7 @@
         <span class="m" style="font-size:12px;color:var(--muted)">{{ optional($booking->travel_date ?? $booking->packageDate?->depart_date)->format('d M Y') ?? '—' }}</span>
       </div>
       <div class="sum"><span style="color:var(--muted)">Customer</span><span style="font-weight:700">{{ $booking->customer?->name }}</span></div>
-      <div class="sum"><span style="color:var(--muted)">Pax</span><span style="font-weight:700">{{ $booking->adults }}A · {{ $booking->children }}C · {{ $booking->infants }}I</span></div>
+      <div class="sum"><span style="color:var(--muted)">Pax</span><span style="font-weight:700">{{ $booking->adults }}A · {{ $booking->children }}C{{ $booking->seniors ? ' · ' . $booking->seniors . 'S' : '' }} · {{ $booking->infants }}I</span></div>
       <div class="sum"><span style="color:var(--muted)">Provider</span><span style="font-weight:700">{{ $booking->provider?->name ?? '—' }}</span></div>
     </div>
 

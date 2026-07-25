@@ -24,14 +24,18 @@ class DatabaseSeeder extends Seeder
             ['Grand Hotel KL','provider@bluetravel.com', 'provider'],
         ];
 
+        // Demo: the Admin Officer is a limited-access staff member (operations only, no finance/commission/company).
+        $adminPerms = ['packages', 'customers', 'bookings', 'payments', 'tickets'];
+
         foreach ($accounts as [$name, $email, $role]) {
             User::updateOrCreate(
                 ['email' => $email],
                 [
-                    'name'     => $name,
-                    'role'     => $role,
-                    'status'   => 'active',
-                    'password' => bcrypt('password'),
+                    'name'        => $name,
+                    'role'        => $role,
+                    'status'      => 'active',
+                    'permissions' => $role === 'admin' ? $adminPerms : null,
+                    'password'    => bcrypt('password'),
                 ]
             );
         }

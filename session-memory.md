@@ -53,6 +53,9 @@
 - Full per-phase detail (files, services, verification) lives in MemoryCore profile #41.
 
 ### Where We Left Off
+- **[✔] Per-package agent commission + senior pax (2026-07-24).** Commission now configured per package: dynamic levels, fixed↔% toggle, per pax-type values (adult/child/senior/infant). New `package_commission_levels` table + `PackageCommissionLevel` model; `CommissionService::calculate` rewritten (packageRows percent=count×fare×%, fixed=count×flat; falls back to global `commission_levels` when a package has none → showcase PKG-0001 still 1360/680/340). Senior is now a first-class pax category (senior_price on pricing/booking, `senior` in booking_pax enum, senior counter on all 3 booking forms). Admin UI = dynamic "💰 Agent Commission" card on package edit form. Verified: Bali percent 1014.40/507.20, Tokyo fixed 950/380, 15 tests pass. Fixed: infant commission input was cut off (col-md-1 → col-md-2). Anti-pattern: `}}C@if(...)` glued directive not compiled — use inline ternary.
+
+### (prev) Where We Left Off
 - **[✔] Public landing page rebuilt & wired to live data (2026-07-20).** `Route::view('/','welcome')` → `CatalogController@home`; the old 49-line placeholder is now a full marketing page.
   - Controller feeds: featured packages (falls back to any active if <3 featured), category chips **with live counts**, unique destinations, next open departures (seats-left computed), stat counters (packages / destinations / customers+bookings / providers) and `Company::current()` for the footer.
   - Sections: sticky nav (transparent → frosted white on scroll) · gradient hero + search form that GETs to `catalog.index` (q + category) · portal-access glass card · stat strip · featured package grid · popular destinations + next departures · why-us · how-it-works · agent-recruitment CTA · footer with real company reg/licence/phone/email/address.

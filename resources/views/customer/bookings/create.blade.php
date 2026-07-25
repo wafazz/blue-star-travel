@@ -48,6 +48,10 @@
             <input type="number" name="children" min="0" max="20" value="{{ old('children', 0) }}" class="inp" required>
           </div>
           <div>
+            <label class="lbl">Seniors</label>
+            <input type="number" name="seniors" min="0" max="20" value="{{ old('seniors', 0) }}" class="inp">
+          </div>
+          <div>
             <label class="lbl">Infants</label>
             <input type="number" name="infants" min="0" max="20" value="{{ old('infants', 0) }}" class="inp" required>
           </div>

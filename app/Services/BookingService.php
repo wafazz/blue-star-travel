@@ -17,6 +17,7 @@ class BookingService
         private GamificationService $game,
         private NotificationService $notifications,
         private CouponService $coupons,
+        private TierService $tiers,
     ) {}
 
     public function reverseCommissions(Booking $booking, ?User $actor): void
@@ -42,13 +43,16 @@ class BookingService
 
             $adults   = (int) ($data['adults'] ?? 1);
             $children = (int) ($data['children'] ?? 0);
+            $seniors  = (int) ($data['seniors'] ?? 0);
             $infants  = (int) ($data['infants'] ?? 0);
 
             $adultPrice  = $pricing->promo_price ?? $pricing->adult_price;
             $childPrice  = $pricing->child_price;
+            $seniorPrice = (float) ($pricing->senior_price ?: 0) ?: (float) $adultPrice;
             $infantPrice = $pricing->infant_price;
 
-            $subtotal = ($adults * $adultPrice) + ($children * $childPrice) + ($infants * $infantPrice);
+            $subtotal = ($adults * $adultPrice) + ($children * $childPrice)
+                + ($seniors * $seniorPrice) + ($infants * $infantPrice);
             $discount = (float) ($data['discount'] ?? 0);
 
             // Optional coupon — validated against the computed subtotal.
@@ -77,10 +81,12 @@ class BookingService
                 'travel_date'        => $data['travel_date'] ?? null,
                 'adults'             => $adults,
                 'children'           => $children,
+                'seniors'            => $seniors,
                 'infants'            => $infants,
-                'total_pax'          => $adults + $children + $infants,
+                'total_pax'          => $adults + $children + $seniors + $infants,
                 'adult_price'        => $adultPrice,
                 'child_price'        => $childPrice,
+                'senior_price'       => $seniorPrice,
                 'infant_price'       => $infantPrice,
                 'subtotal'           => $subtotal,
                 'discount'           => $discount,
@@ -227,6 +233,7 @@ class BookingService
                 if ($booking->agent) {
                     $this->game->completeMissionByCode($booking->agent, 'complete_booking');
                     $this->game->evaluateAchievements($booking->agent);
+                    $this->tiers->evaluate($booking->agent, $actor); // sales-driven rank promotion
                 }
             }
         });

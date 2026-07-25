@@ -30,9 +30,10 @@ class CommissionController extends Controller
 
         $kpis = [
             'pending_count'  => Commission::where('status', 'pending')->count(),
-            'pending_amount' => (float) Commission::where('status', 'pending')->where('is_orphan', false)->sum('amount'),
-            'approved_amount'=> (float) Commission::where('status', 'approved')->sum('amount'),
+            'pending_amount' => (float) Commission::where('status', 'pending')->where('is_orphan', false)->where('is_hq', false)->sum('amount'),
+            'approved_amount'=> (float) Commission::where('status', 'approved')->where('is_hq', false)->sum('amount'),
             'orphan_amount'  => (float) Commission::where('is_orphan', true)->whereIn('status', ['pending', 'approved'])->sum('amount'),
+            'hq_amount'      => (float) Commission::where('is_hq', true)->whereIn('status', ['pending', 'approved'])->sum('amount'),
         ];
 
         $periods = Commission::select('period')->distinct()->orderByDesc('period')->pluck('period');
@@ -68,8 +69,30 @@ class CommissionController extends Controller
     {
         $levels = CommissionLevel::orderBy('level')->get();
         $maxDepth = (int) Setting::get('agent_max_depth', 0);
+        $hq = ($this->commissions->hqDefault() ?? []) + [
+            'active' => false, 'rate_type' => 'percent',
+            'adult_value' => 0, 'child_value' => 0, 'senior_value' => 0, 'infant_value' => 0,
+        ];
 
-        return view('manage.commission.levels', compact('levels', 'maxDepth'));
+        return view('manage.commission.levels', compact('levels', 'maxDepth', 'hq'));
+    }
+
+    public function saveHqCommission(Request $request)
+    {
+        $data = $request->validate([
+            'rate_type'    => ['required', 'in:percent,fixed'],
+            'adult_value'  => ['nullable', 'numeric', 'min:0'],
+            'child_value'  => ['nullable', 'numeric', 'min:0'],
+            'senior_value' => ['nullable', 'numeric', 'min:0'],
+            'infant_value' => ['nullable', 'numeric', 'min:0'],
+        ]);
+        $data['active'] = $request->boolean('active');
+        foreach (['adult_value', 'child_value', 'senior_value', 'infant_value'] as $k) {
+            $data[$k] = (float) ($data[$k] ?? 0);
+        }
+        Setting::put('hq_commission', json_encode($data));
+
+        return back()->with('ok', 'Default HQ commission saved.');
     }
 
     public function storeLevel(Request $request)

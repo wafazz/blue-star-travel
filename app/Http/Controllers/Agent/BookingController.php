@@ -30,7 +30,7 @@ class BookingController extends Controller
     public function create(Request $request)
     {
         return view('agent.bookings.form', [
-            'booking'   => new Booking(['adults' => 1, 'children' => 0, 'infants' => 0, 'type' => 'online']),
+            'booking'   => new Booking(['adults' => 1, 'children' => 0, 'seniors' => 0, 'infants' => 0, 'type' => 'online']),
             'customers' => Customer::where('agent_id', $request->user()->id)->orderBy('name')->get(['id', 'name', 'email', 'phone']),
             'packages'  => Package::with('pricings', 'dates')->where('status', 'active')->orderBy('title')->get(),
         ]);
@@ -47,6 +47,7 @@ class BookingController extends Controller
             'travel_date'        => ['nullable', 'date'],
             'adults'             => ['required', 'integer', 'min:1'],
             'children'           => ['required', 'integer', 'min:0'],
+            'seniors'            => ['nullable', 'integer', 'min:0'],
             'infants'            => ['required', 'integer', 'min:0'],
             'notes'              => ['nullable', 'string', 'max:1000'],
             'coupon_code'        => ['nullable', 'string', 'max:50'],

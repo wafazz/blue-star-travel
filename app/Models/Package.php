@@ -41,6 +41,17 @@ class Package extends Model
         return $this->hasMany(PackageDate::class);
     }
 
+    public function commissionLevels(): HasMany
+    {
+        return $this->hasMany(PackageCommissionLevel::class);
+    }
+
+    /** Active commission levels for this package, ordered — empty means "use the global default levels". */
+    public function activeCommissionLevels()
+    {
+        return $this->commissionLevels()->where('active', true)->orderBy('level')->get();
+    }
+
     public function bookings(): HasMany
     {
         return $this->hasMany(Booking::class);

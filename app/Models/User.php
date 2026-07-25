@@ -26,6 +26,7 @@ class User extends Authenticatable
         'referrer_id',
         'agent_code',
         'agent_tier',
+        'permissions',
         'status',
         'avatar',
         'password',
@@ -39,6 +40,29 @@ class User extends Authenticatable
         'customer'    => 'customer.dashboard',
         'provider'    => 'provider.dashboard',
     ];
+
+    // Agent rank levels (ordered lowest → highest).
+    const TIERS = [
+        'agent'            => 'Agent',
+        'assistant_mentor' => 'Assistant Mentor',
+        'mentor'           => 'Mentor',
+    ];
+
+    const TIER_ICONS = [
+        'agent'            => '🎖️',
+        'assistant_mentor' => '⭐',
+        'mentor'           => '💎',
+    ];
+
+    public function tierLabel(): string
+    {
+        return self::TIERS[$this->agent_tier] ?? ucfirst((string) $this->agent_tier);
+    }
+
+    public static function tierLabelFor(?string $tier): string
+    {
+        return self::TIERS[$tier] ?? ucfirst((string) $tier);
+    }
 
     public function provider()
     {
@@ -164,6 +188,20 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'permissions' => 'array',
         ];
+    }
+
+    /** Can this user access a back-office section? super_admin & hq → everything; admin → granted set only. */
+    public function hasAccess(string $ability): bool
+    {
+        if (in_array($this->role, ['super_admin', 'hq'], true)) {
+            return true;
+        }
+        if ($this->role !== 'admin') {
+            return false;
+        }
+
+        return in_array($ability, $this->permissions ?? [], true);
     }
 }

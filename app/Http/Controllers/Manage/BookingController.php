@@ -145,7 +145,7 @@ class BookingController extends Controller
     private function formData(): array
     {
         return [
-            'booking'   => new Booking(['adults' => 1, 'children' => 0, 'infants' => 0, 'type' => 'manual']),
+            'booking'   => new Booking(['adults' => 1, 'children' => 0, 'seniors' => 0, 'infants' => 0, 'type' => 'manual']),
             'customers' => Customer::orderBy('name')->get(['id', 'name', 'email', 'phone']),
             'packages'  => Package::with('pricings', 'dates')->where('status', 'active')->orderBy('title')->get(),
             'agents'    => User::where('role', 'agent')->orderBy('name')->get(['id', 'name']),
@@ -164,6 +164,7 @@ class BookingController extends Controller
             'travel_date'        => ['nullable', 'date'],
             'adults'             => ['required', 'integer', 'min:1'],
             'children'           => ['required', 'integer', 'min:0'],
+            'seniors'            => ['nullable', 'integer', 'min:0'],
             'infants'            => ['required', 'integer', 'min:0'],
             'discount'           => ['nullable', 'numeric', 'min:0'],
             'coupon_code'        => ['nullable', 'string', 'max:50'],

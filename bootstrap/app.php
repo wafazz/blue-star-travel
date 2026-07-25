@@ -13,7 +13,15 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
             'role' => \App\Http\Middleware\EnsureRole::class,
+            'perm' => \App\Http\Middleware\EnsurePermission::class,
         ]);
+
+        // Already-signed-in users hitting a login page land on their own portal
+        // instead of the framework default (the public landing page).
+        $middleware->redirectUsersTo(function ($request) {
+            $user = $request->user();
+            return $user ? route($user->homeRoute()) : route('home');
+        });
 
         // Payment vendors POST server-to-server with no browser session, so there is
         // no CSRF token to present. These routes authenticate the caller by verifying

@@ -29,11 +29,13 @@ return new class extends Migration
             $table->date('travel_date')->nullable();
             $table->unsignedSmallInteger('adults')->default(1);
             $table->unsignedSmallInteger('children')->default(0);
+            $table->unsignedSmallInteger('seniors')->default(0);
             $table->unsignedSmallInteger('infants')->default(0);
             $table->unsignedSmallInteger('total_pax')->default(1);
 
             $table->decimal('adult_price', 10, 2)->default(0);
             $table->decimal('child_price', 10, 2)->default(0);
+            $table->decimal('senior_price', 10, 2)->default(0);
             $table->decimal('infant_price', 10, 2)->default(0);
             $table->decimal('subtotal', 12, 2)->default(0);
             $table->decimal('discount', 12, 2)->default(0);
