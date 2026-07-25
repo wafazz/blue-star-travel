@@ -38,7 +38,7 @@
 - FPX real vendor, SMS/WhatsApp vendor — still parked (Planning §10). Sandbox gateway swappable.
 - KPDN Direct-Sales licence needed before real MLM payouts (compliance) — commission default-deny gate already in place.
 
-## Demo Logins (all password: `password`)
+## Demo Logins (all password: `password`) — `DatabaseSeeder`, dev only. Live boxes use `ProductionSeeder`.
 - Staff: super@ / hq@ / admin@bluetravel.com · Provider: provider@bluetravel.com (linked to Provider #1)
 - Agents: agent@bluetravel.com (root BT-AG001) · nadia.agent@ (BT-AG002) · imran.agent@ (BT-AG003)
 - Customer: customer@bluetravel.com · Demo booking BK-2026-00001 (confirmed+paid showcase)
@@ -53,6 +53,7 @@
 - Full per-phase detail (files, services, verification) lives in MemoryCore profile #41.
 
 ### Where We Left Off
+- **[✔] Launch prep (2026-07-25).** Guest-middleware redirect made role-aware (`redirectUsersTo` in `bootstrap/app.php`) — a signed-in user hitting any `/login` used to bounce to `/` because the framework's `RedirectIfAuthenticated` falls back to the route named `home`; now goes to their own portal. Demo credential hints + demo-account placeholders stripped from all 4 login pages. **`ProductionSeeder`** added: `php artisan migrate:fresh --seeder=ProductionSeeder --force` = super admin `superadmin@bstravel.agency` only (+ `tier_period_processed` baseline), nothing else. Verified: 20 staff/public URLs all 200 on an empty DB. VPS note: Vite 7 needs Node 20.19+/22.12+ — Ubuntu apt's Node 18 dies with `crypto.hash is not a function`; build with `npm run build`, never `npm run dev`.
 - **[✔] Per-package agent commission + senior pax (2026-07-24).** Commission now configured per package: dynamic levels, fixed↔% toggle, per pax-type values (adult/child/senior/infant). New `package_commission_levels` table + `PackageCommissionLevel` model; `CommissionService::calculate` rewritten (packageRows percent=count×fare×%, fixed=count×flat; falls back to global `commission_levels` when a package has none → showcase PKG-0001 still 1360/680/340). Senior is now a first-class pax category (senior_price on pricing/booking, `senior` in booking_pax enum, senior counter on all 3 booking forms). Admin UI = dynamic "💰 Agent Commission" card on package edit form. Verified: Bali percent 1014.40/507.20, Tokyo fixed 950/380, 15 tests pass. Fixed: infant commission input was cut off (col-md-1 → col-md-2). Anti-pattern: `}}C@if(...)` glued directive not compiled — use inline ternary.
 
 ### (prev) Where We Left Off

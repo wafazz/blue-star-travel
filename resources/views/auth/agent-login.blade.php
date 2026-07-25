@@ -31,7 +31,7 @@
         <label>Agent ID / Email</label>
         <div class="inp">
           <span class="ic">👤</span>
-          <input type="text" name="email" value="{{ old('email') }}" placeholder="agent@bluetravel.com" autocomplete="username">
+          <input type="text" name="email" value="{{ old('email') }}" placeholder="you@email.com" autocomplete="username">
         </div>
       </div>
 
@@ -83,8 +83,6 @@
     </svg>
     <span>Share, then <b>Add to Home Screen</b></span>
   </div>
-
-  <div class="hintbox">💡 Demo: agent@bluetravel.com / password</div>
 
   <div class="foot">
     New agent? <a onclick="toast('Registration requires HQ approval')">Request an account</a>

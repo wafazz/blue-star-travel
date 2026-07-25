@@ -84,8 +84,6 @@
     <span>Share, then <b>Add to Home Screen</b></span>
   </div>
 
-  <div class="hintbox">💡 Demo: customer@bluetravel.com / password</div>
-
   <div class="foot">
     New here? <a href="{{ route('register') }}">Create an account</a>
   </div>

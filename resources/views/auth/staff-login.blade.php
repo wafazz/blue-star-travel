@@ -43,7 +43,7 @@
           @csrf
           <div class="mb-3">
             <label class="form-label fw-semibold small">Email</label>
-            <input type="email" name="email" value="{{ old('email') }}" class="form-control form-control-lg" placeholder="admin@bluetravel.com" autocomplete="username" required>
+            <input type="email" name="email" value="{{ old('email') }}" class="form-control form-control-lg" placeholder="you@email.com" autocomplete="username" required>
           </div>
           <div class="mb-3">
             <label class="form-label fw-semibold small">Password</label>
@@ -58,8 +58,6 @@
           </div>
           <button type="submit" class="btn btn-brand btn-lg w-100">Sign In →</button>
         </form>
-
-        <p class="text-center text-secondary small mt-4 mb-0">Demo: admin@bluetravel.com / password</p>
       </div>
     </div>
 
