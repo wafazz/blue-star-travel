@@ -121,26 +121,28 @@ class CatalogSeeder extends Seeder
                 ]
             );
 
+            // Room types priced per pax — the fewer share a room, the higher the fare.
             $package->pricings()->delete();
-            $package->pricings()->create([
-                'tier_name'    => 'Standard',
-                'adult_price'  => $p['adult'],
-                'child_price'  => $p['child'],
-                'senior_price' => round($p['adult'] * 0.9),   // senior-citizen fare
-                'infant_price' => $p['infant'],
-                'promo_price'  => $p['promo'],
-                'group_min'    => 10,
-                'group_discount_percent' => 5,
-                'is_default'   => true,
-            ]);
-            $package->pricings()->create([
-                'tier_name'    => 'Deluxe',
-                'adult_price'  => round($p['adult'] * 1.25),
-                'child_price'  => round($p['child'] * 1.25),
-                'senior_price' => round($p['adult'] * 1.25 * 0.9),
-                'infant_price' => $p['infant'],
-                'is_default'   => false,
-            ]);
+            $rooms = [
+                ['Quad',   4, 1.00, true],
+                ['Triple', 3, 1.06, false],
+                ['Double', 2, 1.15, false],
+                ['Single', 1, 1.35, false],
+            ];
+            foreach ($rooms as [$name, $capacity, $factor, $isDefault]) {
+                $package->pricings()->create([
+                    'tier_name'    => $name,
+                    'capacity'     => $capacity,
+                    'adult_price'  => round($p['adult'] * $factor),
+                    'child_price'  => round($p['child'] * $factor),
+                    'senior_price' => round($p['adult'] * $factor * 0.9),   // senior-citizen fare
+                    'infant_price' => $p['infant'],
+                    'promo_price'  => $isDefault ? $p['promo'] : null,
+                    'group_min'    => $isDefault ? 10 : null,
+                    'group_discount_percent' => $isDefault ? 5 : null,
+                    'is_default'   => $isDefault,
+                ]);
+            }
 
             // Per-package agent commission — demonstrates the two payout modes.
             // PKG-0001 (showcase) is deliberately left empty so it uses the global default levels.

@@ -36,6 +36,20 @@ class BookingService
         return $prefix . str_pad((string) $seq, 5, '0', STR_PAD_LEFT);
     }
 
+    /** Total travellers in a booking request — summed across room lines when present. */
+    private function paxTotal(array $data): int
+    {
+        $rows = ! empty($data['rooms']) ? $data['rooms'] : [$data];
+
+        $total = 0;
+        foreach ($rows as $r) {
+            $total += (int) ($r['adults'] ?? 0) + (int) ($r['children'] ?? 0)
+                + (int) ($r['seniors'] ?? 0) + (int) ($r['infants'] ?? 0);
+        }
+
+        return $total;
+    }
+
     /**
      * Enforce the package's date_mode against a booking request, and check seats on a
      * chosen departure. Called by every portal before create() so the three booking
@@ -43,6 +57,13 @@ class BookingService
      */
     public function assertDateSelection(Package $package, array $data): void
     {
+        // Pax live on the room lines now, so an empty room table means an empty booking.
+        if ($this->paxTotal($data) < 1) {
+            throw ValidationException::withMessages([
+                'rooms' => 'Add at least one passenger.',
+            ]);
+        }
+
         $dateId = $data['package_date_id'] ?? null;
         $travelDate = $data['travel_date'] ?? null;
 
@@ -65,8 +86,7 @@ class BookingService
                 ]);
             }
 
-            $pax = (int) ($data['adults'] ?? 1) + (int) ($data['children'] ?? 0)
-                + (int) ($data['seniors'] ?? 0) + (int) ($data['infants'] ?? 0);
+            $pax = $this->paxTotal($data);
 
             // seats_total 0 means "unlimited" — the seeded showcase uses it that way.
             if ($departure->seats_total > 0 && $pax > $departure->seatsAvailable()) {
@@ -91,6 +111,70 @@ class BookingService
         }
     }
 
+    /**
+     * Normalise a booking's room selection into priced lines. Each line is one room type
+     * at its own per-pax rate; `rooms` is how many physical rooms of that type. Falls back
+     * to a single line on the chosen pricing tier when no rooms were posted.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function roomLines(Package $package, array $data, $fallbackPricing): array
+    {
+        $posted = array_values(array_filter(
+            $data['rooms'] ?? [],
+            fn ($r) => (int) ($r['adults'] ?? 0) + (int) ($r['children'] ?? 0)
+                + (int) ($r['seniors'] ?? 0) + (int) ($r['infants'] ?? 0) > 0
+        ));
+
+        if (empty($posted)) {
+            $posted = [[
+                'package_pricing_id' => $fallbackPricing?->id,
+                'adults'   => $data['adults'] ?? 1,
+                'children' => $data['children'] ?? 0,
+                'seniors'  => $data['seniors'] ?? 0,
+                'infants'  => $data['infants'] ?? 0,
+            ]];
+        }
+
+        $lines = [];
+        foreach ($posted as $row) {
+            $pricing = $package->pricings()->find($row['package_pricing_id'] ?? null) ?? $fallbackPricing;
+
+            $adults   = (int) ($row['adults'] ?? 0);
+            $children = (int) ($row['children'] ?? 0);
+            $seniors  = (int) ($row['seniors'] ?? 0);
+            $infants  = (int) ($row['infants'] ?? 0);
+
+            $adultPrice  = (float) ($pricing->promo_price ?? $pricing->adult_price ?? 0);
+            $childPrice  = (float) ($pricing->child_price ?? 0);
+            $seniorPrice = (float) ($pricing->senior_price ?: 0) ?: $adultPrice;
+            $infantPrice = (float) ($pricing->infant_price ?? 0);
+
+            $capacity = max(1, (int) ($pricing->capacity ?? 2));
+            $pax      = $adults + $children + $seniors + $infants;
+
+            $lines[] = [
+                'package_pricing_id' => $pricing?->id,
+                'room_name'   => $pricing->tier_name ?? 'Standard',
+                'capacity'    => $capacity,
+                // Infants share a bed, so they never force an extra room.
+                'rooms'       => (int) ceil(max(1, $pax - $infants) / $capacity),
+                'adults'      => $adults,
+                'children'    => $children,
+                'seniors'     => $seniors,
+                'infants'     => $infants,
+                'adult_price'  => $adultPrice,
+                'child_price'  => $childPrice,
+                'senior_price' => $seniorPrice,
+                'infant_price' => $infantPrice,
+                'subtotal'    => round($adults * $adultPrice + $children * $childPrice
+                    + $seniors * $seniorPrice + $infants * $infantPrice, 2),
+            ];
+        }
+
+        return $lines;
+    }
+
     public function create(array $data, ?User $actor, array $paxRows = []): Booking
     {
         return DB::transaction(function () use ($data, $actor, $paxRows) {
@@ -103,18 +187,24 @@ class BookingService
                 $data['travel_date'] = $departure->depart_date;
             }
 
-            $adults   = (int) ($data['adults'] ?? 1);
-            $children = (int) ($data['children'] ?? 0);
-            $seniors  = (int) ($data['seniors'] ?? 0);
-            $infants  = (int) ($data['infants'] ?? 0);
+            // A booking may span several room types, each with its own per-pax rate.
+            // Without room lines this falls back to one line on the chosen tier, which
+            // is what the customer portal and the seeders still post.
+            $roomLines = $this->roomLines($package, $data, $pricing);
 
-            $adultPrice  = $pricing->promo_price ?? $pricing->adult_price;
-            $childPrice  = $pricing->child_price;
-            $seniorPrice = (float) ($pricing->senior_price ?: 0) ?: (float) $adultPrice;
-            $infantPrice = $pricing->infant_price;
+            $adults   = array_sum(array_column($roomLines, 'adults'));
+            $children = array_sum(array_column($roomLines, 'children'));
+            $seniors  = array_sum(array_column($roomLines, 'seniors'));
+            $infants  = array_sum(array_column($roomLines, 'infants'));
 
-            $subtotal = ($adults * $adultPrice) + ($children * $childPrice)
-                + ($seniors * $seniorPrice) + ($infants * $infantPrice);
+            // Legacy single-rate columns keep the first room's rates so older screens,
+            // exports and the commission fallback still read something sensible.
+            $adultPrice  = $roomLines[0]['adult_price'];
+            $childPrice  = $roomLines[0]['child_price'];
+            $seniorPrice = $roomLines[0]['senior_price'];
+            $infantPrice = $roomLines[0]['infant_price'];
+
+            $subtotal = array_sum(array_column($roomLines, 'subtotal'));
             $discount = (float) ($data['discount'] ?? 0);
 
             // Optional coupon — validated against the computed subtotal.
@@ -157,6 +247,10 @@ class BookingService
                 'notes'              => $data['notes'] ?? null,
                 'submitted_at'       => $status === 'draft' ? null : now(),
             ]);
+
+            foreach ($roomLines as $line) {
+                $booking->rooms()->create($line);
+            }
 
             foreach ($paxRows as $row) {
                 if (empty($row['name'])) {

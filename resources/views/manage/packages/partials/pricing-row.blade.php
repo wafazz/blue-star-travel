@@ -1,14 +1,18 @@
 <div class="border rounded-3 p-3 position-relative pricing-row">
   <button type="button" class="btn-close position-absolute top-0 end-0 m-2" onclick="removeRow(this, '.pricing-row')"></button>
   <div class="row g-2">
-    <div class="col-md-6">
-      <label class="form-label small fw-semibold mb-1">Tier Name</label>
-      <input type="text" name="pricings[{{ $i }}][tier_name]" value="{{ data_get($p, 'tier_name') }}" class="form-control form-control-sm" placeholder="Standard / Deluxe / VIP">
+    <div class="col-md-5">
+      <label class="form-label small fw-semibold mb-1">Room Type</label>
+      <input type="text" name="pricings[{{ $i }}][tier_name]" value="{{ data_get($p, 'tier_name') }}" class="form-control form-control-sm" placeholder="Quad / Triple / Double / Single">
     </div>
-    <div class="col-md-6 d-flex align-items-end">
+    <div class="col-md-3">
+      <label class="form-label small fw-semibold mb-1">Pax per Room</label>
+      <input type="number" min="1" max="20" name="pricings[{{ $i }}][capacity]" value="{{ data_get($p, 'capacity', 2) }}" class="form-control form-control-sm">
+    </div>
+    <div class="col-md-4 d-flex align-items-end">
       <div class="form-check">
         <input type="radio" name="default_pricing" value="{{ $i }}" class="form-check-input" @checked((string) $defaultPricing === (string) $i)>
-        <label class="form-check-label small">Default tier</label>
+        <label class="form-check-label small">Default room type</label>
       </div>
     </div>
     <div class="col-4 col-md-2">

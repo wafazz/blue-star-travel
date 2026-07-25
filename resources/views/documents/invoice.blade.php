@@ -69,23 +69,38 @@
       <tr><th>Description</th><th class="right">Pax</th><th class="right">Unit (RM)</th><th class="right">Amount (RM)</th></tr>
     </thead>
     <tbody>
-      @if ($booking->adults > 0)
-        <tr>
-          <td>{{ $booking->package->title }} — Adult<br><span class="muted">{{ $booking->package->destination }} · {{ $booking->travel_date?->format('d M Y') }}</span></td>
-          <td class="right">{{ $booking->adults }}</td>
-          <td class="right">{{ number_format($booking->adult_price, 2) }}</td>
-          <td class="right">{{ number_format($booking->adults * $booking->adult_price, 2) }}</td>
-        </tr>
-      @endif
-      @if ($booking->children > 0)
-        <tr><td>{{ $booking->package->title }} — Child</td><td class="right">{{ $booking->children }}</td><td class="right">{{ number_format($booking->child_price, 2) }}</td><td class="right">{{ number_format($booking->children * $booking->child_price, 2) }}</td></tr>
-      @endif
-      @if ($booking->seniors > 0)
-        <tr><td>{{ $booking->package->title }} — Senior</td><td class="right">{{ $booking->seniors }}</td><td class="right">{{ number_format($booking->senior_price, 2) }}</td><td class="right">{{ number_format($booking->seniors * $booking->senior_price, 2) }}</td></tr>
-      @endif
-      @if ($booking->infants > 0)
-        <tr><td>{{ $booking->package->title }} — Infant</td><td class="right">{{ $booking->infants }}</td><td class="right">{{ number_format($booking->infant_price, 2) }}</td><td class="right">{{ number_format($booking->infants * $booking->infant_price, 2) }}</td></tr>
-      @endif
+      @php
+        // Rooms carry snapshotted rates. Pre-room bookings fall back to the booking's own columns.
+        $lines = $booking->rooms->isNotEmpty()
+          ? $booking->rooms
+          : collect([(object) [
+              'room_name' => $booking->pricing?->tier_name ?? 'Standard', 'rooms' => 1,
+              'adults' => $booking->adults, 'children' => $booking->children,
+              'seniors' => $booking->seniors, 'infants' => $booking->infants,
+              'adult_price' => $booking->adult_price, 'child_price' => $booking->child_price,
+              'senior_price' => $booking->senior_price, 'infant_price' => $booking->infant_price,
+            ]]);
+        $first = true;
+      @endphp
+      @foreach ($lines as $line)
+        @foreach (['adult' => 'adults', 'child' => 'children', 'senior' => 'seniors', 'infant' => 'infants'] as $type => $column)
+          @php $count = (int) $line->{$column}; $rate = (float) $line->{$type . '_price'}; @endphp
+          @if ($count > 0)
+            <tr>
+              <td>
+                {{ $booking->package->title }} — {{ $line->room_name }} · {{ ucfirst($type) }}
+                @if ($first)
+                  <br><span class="muted">{{ $booking->package->destination }} · {{ $booking->travel_date?->format('d M Y') }}</span>
+                  @php $first = false; @endphp
+                @endif
+              </td>
+              <td class="right">{{ $count }}</td>
+              <td class="right">{{ number_format($rate, 2) }}</td>
+              <td class="right">{{ number_format($count * $rate, 2) }}</td>
+            </tr>
+          @endif
+        @endforeach
+      @endforeach
     </tbody>
   </table>
 

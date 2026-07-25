@@ -157,15 +157,40 @@ class CommissionService
         return is_array($raw) ? $raw : (json_decode($raw, true) ?: null);
     }
 
-    /** Pax-type breakdown for a booking → [type => ['count' => n, 'price' => rm]]. */
+    /**
+     * Pax-type breakdown for a booking → [type => ['count' => n, 'price' => rm]].
+     *
+     * A booking can span several room types at different per-pax rates, so `price` is the
+     * fare-weighted average: count × price reproduces the exact total fare for that type,
+     * which is what a percentage commission is charged on. Bookings with no room lines
+     * (customer portal, seeders, pre-migration rows) read the legacy single-rate columns.
+     */
     private function paxBreakdown(Booking $booking): array
     {
-        return [
-            'adult'  => ['count' => (int) $booking->adults,   'price' => (float) $booking->adult_price],
-            'child'  => ['count' => (int) $booking->children, 'price' => (float) $booking->child_price],
-            'senior' => ['count' => (int) $booking->seniors,  'price' => (float) $booking->senior_price],
-            'infant' => ['count' => (int) $booking->infants,  'price' => (float) $booking->infant_price],
-        ];
+        $rooms = $booking->relationLoaded('rooms') ? $booking->rooms : $booking->rooms()->get();
+
+        if ($rooms->isEmpty()) {
+            return [
+                'adult'  => ['count' => (int) $booking->adults,   'price' => (float) $booking->adult_price],
+                'child'  => ['count' => (int) $booking->children, 'price' => (float) $booking->child_price],
+                'senior' => ['count' => (int) $booking->seniors,  'price' => (float) $booking->senior_price],
+                'infant' => ['count' => (int) $booking->infants,  'price' => (float) $booking->infant_price],
+            ];
+        }
+
+        $out = [];
+        foreach (['adult' => 'adults', 'child' => 'children', 'senior' => 'seniors', 'infant' => 'infants'] as $type => $column) {
+            $count = 0;
+            $fare  = 0.0;
+            foreach ($rooms as $room) {
+                $n = (int) $room->{$column};
+                $count += $n;
+                $fare  += $n * (float) $room->{$type . '_price'};
+            }
+            $out[$type] = ['count' => $count, 'price' => $count > 0 ? $fare / $count : 0.0];
+        }
+
+        return $out;
     }
 
     /** Build per-level commission rows from the package's own configuration. */

@@ -71,7 +71,7 @@ class BookingController extends Controller
     {
         $customer = $this->customer($request);
         abort_unless($booking->customer_id === $customer->id, 403);
-        $booking->load('package', 'provider', 'packageDate', 'pax', 'timeline', 'documents', 'payments');
+        $booking->load('package', 'provider', 'packageDate', 'pax', 'rooms', 'timeline', 'documents', 'payments');
 
         return view('customer.bookings.show', compact('booking'));
     }

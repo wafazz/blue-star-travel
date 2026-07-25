@@ -10,6 +10,7 @@
     'pricings' => $p->pricings->map(fn ($pr) => [
       'id'          => $pr->id,
       'tier_name'   => $pr->tier_name,
+      'capacity'    => (int) $pr->capacity,
       'adult_price' => (float) ($pr->promo_price ?? $pr->adult_price),
       'child_price' => (float) $pr->child_price,
       'senior_price'=> (float) ($pr->senior_price ?: ($pr->promo_price ?? $pr->adult_price)),
@@ -41,10 +42,6 @@
                 <option value="{{ $p->id }}" @selected(old('package_id') == $p->id)>{{ $p->title }}</option>
               @endforeach
             </select>
-          </div>
-          <div class="col-md-6">
-            <label class="form-label small fw-semibold">Pricing Tier</label>
-            <select name="package_pricing_id" id="package_pricing_id" class="form-select"></select>
           </div>
           <div class="col-md-6" id="departureWrap">
             <label class="form-label small fw-semibold">Departure Date</label>
@@ -92,15 +89,19 @@
       </div>
 
       <div class="card p-3 p-lg-4 mb-3">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-          <h6 class="fw-bold mb-0">Passengers</h6>
-          <button type="button" class="btn btn-sm btn-outline-primary" onclick="addPax()">＋ Add pax detail</button>
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <h6 class="fw-bold mb-0">Rooms &amp; Passengers</h6>
+          <button type="button" class="btn btn-sm btn-outline-primary" onclick="addRoom()">＋ Add room type</button>
         </div>
-        <div class="row g-3 mb-3">
-          <div class="col-3"><label class="form-label small fw-semibold">Adults</label><input type="number" name="adults" id="adults" value="{{ old('adults', 1) }}" min="1" class="form-control"></div>
-          <div class="col-3"><label class="form-label small fw-semibold">Children</label><input type="number" name="children" id="children" value="{{ old('children', 0) }}" min="0" class="form-control"></div>
-          <div class="col-3"><label class="form-label small fw-semibold">Seniors</label><input type="number" name="seniors" id="seniors" value="{{ old('seniors', 0) }}" min="0" class="form-control"></div>
-          <div class="col-3"><label class="form-label small fw-semibold">Infants</label><input type="number" name="infants" id="infants" value="{{ old('infants', 0) }}" min="0" class="form-control"></div>
+        <div class="small text-secondary mb-3">One line per room type — rates are per pax and differ by occupancy.</div>
+        <div id="roomRows"></div>
+        <div class="small text-danger mb-2" id="roomWarn"></div>
+      </div>
+
+      <div class="card p-3 p-lg-4 mb-3">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h6 class="fw-bold mb-0">Passenger Details</h6>
+          <button type="button" class="btn btn-sm btn-outline-primary" onclick="addPax()">＋ Add pax detail</button>
         </div>
         <div id="paxRows"></div>
       </div>
@@ -114,10 +115,8 @@
     <div class="col-lg-4">
       <div class="card p-3 p-lg-4 position-sticky" style="top:1rem">
         <h6 class="fw-bold mb-3">Price Summary</h6>
-        <div class="d-flex justify-content-between small mb-2"><span class="text-secondary">Adults × <span id="s-adults">1</span></span><span id="s-adult-line">RM 0.00</span></div>
-        <div class="d-flex justify-content-between small mb-2"><span class="text-secondary">Children × <span id="s-children">0</span></span><span id="s-child-line">RM 0.00</span></div>
-        <div class="d-flex justify-content-between small mb-2"><span class="text-secondary">Seniors × <span id="s-seniors">0</span></span><span id="s-senior-line">RM 0.00</span></div>
-        <div class="d-flex justify-content-between small mb-2"><span class="text-secondary">Infants × <span id="s-infants">0</span></span><span id="s-infant-line">RM 0.00</span></div>
+        <div id="s-rooms"></div>
+        <div class="d-flex justify-content-between small mb-2"><span class="text-secondary">Total pax</span><span id="s-pax">0</span></div>
         <hr class="my-2">
         <div class="d-flex justify-content-between mb-2"><span class="text-secondary small">Subtotal</span><span class="fw-semibold" id="s-subtotal">RM 0.00</span></div>
         <div class="d-flex justify-content-between align-items-center mb-2">
@@ -143,32 +142,61 @@
     const money = n => 'RM ' + (Number(n) || 0).toLocaleString('en-MY', {minimumFractionDigits: 2, maximumFractionDigits: 2});
     let paxIdx = 0;
 
-    function currentPricing() {
-      const pkg = PKGS[$('package_id').value];
-      if (!pkg) return null;
-      return pkg.pricings.find(p => p.id == $('package_pricing_id').value) || pkg.pricings[0] || null;
+    const OLD_ROOMS = @json(old('rooms', []));
+    let roomIdx = 0;
+
+    function fillDates(pkg) {
+      const ds = $('package_date_id');
+      ds.innerHTML = '<option value="">—</option>';
+      if (!pkg) return;
+      pkg.dates.forEach(d => {
+        const o = document.createElement('option');
+        o.value = d.id; o.textContent = d.label + (d.seats === null ? '' : ' (' + d.seats + ' seats left)');
+        o.dataset.depart = d.depart || '';
+        ds.appendChild(o);
+      });
+      if (!pkg.dates.length && pkg.date_mode !== 'open') ds.innerHTML = '<option value="">No departures available</option>';
     }
 
     function fillPackage() {
       const pkg = PKGS[$('package_id').value];
-      const ps = $('package_pricing_id'), ds = $('package_date_id');
-      ps.innerHTML = ''; ds.innerHTML = '<option value="">—</option>';
-      if (pkg) {
-        pkg.pricings.forEach(p => {
-          const o = document.createElement('option');
-          o.value = p.id; o.textContent = p.tier_name + ' — ' + money(p.adult_price);
-          if (p.is_default) o.selected = true;
-          ps.appendChild(o);
-        });
-        pkg.dates.forEach(d => {
-          const o = document.createElement('option');
-          o.value = d.id; o.textContent = d.label + (d.seats === null ? '' : ' (' + d.seats + ' seats left)');
-          o.dataset.depart = d.depart || '';
-          ds.appendChild(o);
-        });
-        if (!pkg.dates.length && pkg.date_mode !== 'open') ds.innerHTML = '<option value="">No departures available</option>';
-      }
+      fillDates(pkg);
       applyDateMode(pkg);
+      // Rates belong to the package, so a package change invalidates every room line.
+      $('roomRows').innerHTML = ''; roomIdx = 0;
+      if (pkg) addRoom();
+      recalc();
+    }
+
+    // One row per room type. Rates are per pax and differ by occupancy, so each row
+    // carries its own pax split rather than sharing one booking-wide count.
+    function addRoom(preset) {
+      const pkg = PKGS[$('package_id').value];
+      if (!pkg || !pkg.pricings.length) { $('roomWarn').textContent = 'Choose a package first.'; return; }
+      $('roomWarn').textContent = '';
+
+      const i = roomIdx++;
+      const opts = pkg.pricings.map(p =>
+        `<option value="${p.id}" ${preset && preset.package_pricing_id == p.id ? 'selected' : (!preset && p.is_default ? 'selected' : '')}>`
+        + `${p.tier_name} (${p.capacity} pax) — ${money(p.adult_price)}/pax</option>`).join('');
+      const num = (n, label) =>
+        `<div class="col"><label class="form-label small mb-1">${label}</label>`
+        + `<input type="number" min="0" class="form-control form-control-sm" name="rooms[${i}][${n}]" `
+        + `value="${preset ? (preset[n] || 0) : (n === 'adults' && i === 0 ? 1 : 0)}"></div>`;
+
+      const row = document.createElement('div');
+      row.className = 'room-row border rounded-3 p-3 mb-2';
+      row.innerHTML = `
+        <div class="d-flex gap-2 align-items-center mb-2">
+          <select name="rooms[${i}][package_pricing_id]" class="form-select form-select-sm room-type">${opts}</select>
+          <button type="button" class="btn btn-sm btn-outline-danger" onclick="this.closest('.room-row').remove();recalc()">✕</button>
+        </div>
+        <div class="row g-2">
+          ${num('adults', 'Adults')}${num('children', 'Children')}${num('seniors', 'Seniors')}${num('infants', 'Infants')}
+        </div>
+        <div class="form-text small room-note"></div>`;
+      $('roomRows').appendChild(row);
+      row.querySelectorAll('select,input').forEach(el => el.addEventListener('input', recalc));
       recalc();
     }
 
@@ -190,19 +218,32 @@
     }
 
     function recalc() {
-      const pr = currentPricing();
-      const a = +$('adults').value || 0, c = +$('children').value || 0, s = +$('seniors').value || 0, i = +$('infants').value || 0;
-      const ap = pr ? pr.adult_price : 0, cp = pr ? pr.child_price : 0, sp = pr ? pr.senior_price : 0, ip = pr ? pr.infant_price : 0;
-      const aLine = a * ap, cLine = c * cp, sLine = s * sp, iLine = i * ip;
-      const sub = aLine + cLine + sLine + iLine;
+      const pkg = PKGS[$('package_id').value];
+      let sub = 0, pax = 0, html = '';
+
+      document.querySelectorAll('.room-row').forEach(row => {
+        const pr = pkg ? pkg.pricings.find(p => p.id == row.querySelector('.room-type').value) : null;
+        const get = n => +row.querySelector(`[name$="[${n}]"]`).value || 0;
+        const a = get('adults'), c = get('children'), s = get('seniors'), i = get('infants');
+        const n = a + c + s + i;
+        const line = pr ? a * pr.adult_price + c * pr.child_price + s * pr.senior_price + i * pr.infant_price : 0;
+
+        // Infants share a bed, so they never force an extra room.
+        const rooms = pr ? Math.ceil(Math.max(1, n - i) / pr.capacity) : 0;
+        row.querySelector('.room-note').textContent = n
+          ? `${n} pax · ${rooms} room${rooms > 1 ? 's' : ''} · ${money(line)}`
+          : 'No passengers in this room type yet.';
+
+        sub += line; pax += n;
+        if (n && pr) html += `<div class="d-flex justify-content-between small mb-2"><span class="text-secondary">${pr.tier_name} × ${n} pax (${rooms} rm)</span><span>${money(line)}</span></div>`;
+      });
+
       const disc = +$('discount').value || 0;
-      $('s-adults').textContent = a; $('s-children').textContent = c; $('s-seniors').textContent = s; $('s-infants').textContent = i;
-      $('s-adult-line').textContent = money(aLine);
-      $('s-child-line').textContent = money(cLine);
-      $('s-senior-line').textContent = money(sLine);
-      $('s-infant-line').textContent = money(iLine);
+      $('s-rooms').innerHTML = html;
+      $('s-pax').textContent = pax;
       $('s-subtotal').textContent = money(sub);
       $('s-total').textContent = money(Math.max(0, sub - disc));
+      $('roomWarn').textContent = pax === 0 ? 'Add at least one passenger.' : '';
     }
 
     function addPax() {
@@ -219,12 +260,22 @@
       paxIdx++;
     }
 
-    ['package_id'].forEach(id => $(id).addEventListener('change', fillPackage));
-    ['package_pricing_id','adults','children','seniors','infants','discount'].forEach(id => $(id).addEventListener('input', recalc));
+    $('package_id').addEventListener('change', fillPackage);
+    $('discount').addEventListener('input', recalc);
     $('package_date_id').addEventListener('change', function () {
       const dep = this.selectedOptions[0]?.dataset.depart;
       if (dep && !$('travel_date').value) $('travel_date').value = dep;
     });
-    fillPackage();
+
+    // On a validation bounce, rebuild exactly what was submitted instead of one blank row.
+    if (OLD_ROOMS.length) {
+      const pkg = PKGS[$('package_id').value];
+      fillDates(pkg);
+      applyDateMode(pkg);
+      OLD_ROOMS.forEach(r => addRoom(r));
+      recalc();
+    } else {
+      fillPackage();
+    }
   </script>
 @endsection

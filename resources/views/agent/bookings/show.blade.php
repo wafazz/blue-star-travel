@@ -18,6 +18,12 @@
       </div>
       <div class="sum"><span style="color:var(--muted)">Customer</span><span style="font-weight:700">{{ $booking->customer?->name }}</span></div>
       <div class="sum"><span style="color:var(--muted)">Pax</span><span style="font-weight:700">{{ $booking->adults }}A · {{ $booking->children }}C{{ $booking->seniors ? ' · ' . $booking->seniors . 'S' : '' }} · {{ $booking->infants }}I</span></div>
+      @foreach ($booking->rooms as $room)
+        <div class="sum">
+          <span style="color:var(--muted)">{{ $room->room_name }} × {{ $room->rooms }} rm</span>
+          <span style="font-weight:700">RM {{ number_format($room->subtotal, 2) }}</span>
+        </div>
+      @endforeach
       <div class="sum"><span style="color:var(--muted)">Provider</span><span style="font-weight:700">{{ $booking->provider?->name ?? '—' }}</span></div>
     </div>
 

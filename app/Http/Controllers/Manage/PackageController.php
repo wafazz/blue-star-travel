@@ -158,6 +158,7 @@ class PackageController extends Controller
             }
             $package->pricings()->create([
                 'tier_name'    => $row['tier_name'],
+                'capacity'     => max(1, (int) ($row['capacity'] ?? 2)),
                 'adult_price'  => $row['adult_price'] ?? 0,
                 'child_price'  => $row['child_price'] ?? 0,
                 'senior_price' => $row['senior_price'] ?? 0,

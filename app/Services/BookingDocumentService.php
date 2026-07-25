@@ -28,7 +28,7 @@ class BookingDocumentService
 
     private function render(Booking $booking, string $type, string $view, string $filename): BookingDocument
     {
-        $booking->loadMissing('package', 'customer', 'agent', 'provider', 'pax');
+        $booking->loadMissing('package', 'customer', 'agent', 'provider', 'pax', 'rooms', 'pricing');
         $company = Company::current();
 
         $pdf = Pdf::loadView($view, ['booking' => $booking, 'company' => $company])->setPaper('a4');

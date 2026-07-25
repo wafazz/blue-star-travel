@@ -58,14 +58,33 @@
             <div class="fw-semibold">{{ optional($booking->packageDate?->depart_date)->format('d M Y') ?? optional($booking->travel_date)->format('d M Y') ?? '—' }}</div>
           </div>
           <div class="col-md-4">
-            <div class="text-secondary small">Pricing Tier</div>
-            <div class="fw-semibold">{{ $booking->pricing?->tier_name ?? '—' }}</div>
+            <div class="text-secondary small">Rooms</div>
+            <div class="fw-semibold">{{ $booking->rooms->sum('rooms') ?: '—' }} ({{ $booking->rooms->count() }} type{{ $booking->rooms->count() === 1 ? '' : 's' }})</div>
           </div>
           <div class="col-md-4">
             <div class="text-secondary small">Pax</div>
             <div class="fw-semibold">{{ $booking->adults }}A · {{ $booking->children }}C{{ $booking->seniors ? ' · ' . $booking->seniors . 'S' : '' }} · {{ $booking->infants }}I ({{ $booking->total_pax }})</div>
           </div>
         </div>
+
+        @if ($booking->rooms->isNotEmpty())
+          <div class="table-responsive mt-3">
+            <table class="table table-sm align-middle mb-0">
+              <thead class="table-light"><tr><th>Room Type</th><th class="text-center">Rooms</th><th class="text-center">Pax</th><th class="text-end">Rate/pax</th><th class="text-end">Subtotal</th></tr></thead>
+              <tbody>
+                @foreach ($booking->rooms as $room)
+                  <tr>
+                    <td class="fw-semibold">{{ $room->room_name }} <span class="text-secondary fw-normal small">({{ $room->capacity }} pax/room)</span></td>
+                    <td class="text-center">{{ $room->rooms }}</td>
+                    <td class="text-center small">{{ $room->adults }}A · {{ $room->children }}C{{ $room->seniors ? ' · ' . $room->seniors . 'S' : '' }} · {{ $room->infants }}I</td>
+                    <td class="text-end small">RM {{ number_format($room->adult_price, 2) }}</td>
+                    <td class="text-end fw-semibold">RM {{ number_format($room->subtotal, 2) }}</td>
+                  </tr>
+                @endforeach
+              </tbody>
+            </table>
+          </div>
+        @endif
         @if ($booking->notes)
           <div class="mt-3 p-2 bg-light rounded small"><strong>Notes:</strong> {{ $booking->notes }}</div>
         @endif

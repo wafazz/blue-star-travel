@@ -94,6 +94,11 @@ class Booking extends Model
         return $this->hasMany(BookingPax::class);
     }
 
+    public function rooms(): HasMany
+    {
+        return $this->hasMany(BookingRoom::class);
+    }
+
     public function timeline(): HasMany
     {
         return $this->hasMany(BookingTimeline::class)->latest();

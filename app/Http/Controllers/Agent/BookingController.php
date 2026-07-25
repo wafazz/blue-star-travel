@@ -49,13 +49,21 @@ class BookingController extends Controller
             'new_customer_email' => ['nullable', 'email', 'max:255'],
             'type'               => ['required', 'in:' . implode(',', array_keys(Booking::TYPES))],
             'travel_date'        => ['nullable', 'date'],
-            'adults'             => ['required', 'integer', 'min:1'],
-            'children'           => ['required', 'integer', 'min:0'],
+            // Pax now live on the room lines; these stay for the customer portal + API callers.
+            'adults'             => ['nullable', 'integer', 'min:0'],
+            'children'           => ['nullable', 'integer', 'min:0'],
             'seniors'            => ['nullable', 'integer', 'min:0'],
-            'infants'            => ['required', 'integer', 'min:0'],
+            'infants'            => ['nullable', 'integer', 'min:0'],
             'notes'              => ['nullable', 'string', 'max:1000'],
             'coupon_code'        => ['nullable', 'string', 'max:50'],
             'pax'                => ['nullable', 'array'],
+            // One line per room type; each carries its own pax split.
+            'rooms'                        => ['nullable', 'array'],
+            'rooms.*.package_pricing_id'   => ['required', 'exists:package_pricings,id'],
+            'rooms.*.adults'               => ['nullable', 'integer', 'min:0', 'max:99'],
+            'rooms.*.children'             => ['nullable', 'integer', 'min:0', 'max:99'],
+            'rooms.*.seniors'              => ['nullable', 'integer', 'min:0', 'max:99'],
+            'rooms.*.infants'              => ['nullable', 'integer', 'min:0', 'max:99'],
         ]);
         $data['agent_id'] = $request->user()->id;
 
@@ -82,7 +90,7 @@ class BookingController extends Controller
     public function show(Booking $booking, Request $request)
     {
         abort_unless($booking->agent_id === $request->user()->id, 403);
-        $booking->load('package', 'customer', 'provider', 'packageDate', 'pax', 'timeline.user', 'documents', 'payments');
+        $booking->load('package', 'customer', 'provider', 'packageDate', 'pax', 'rooms', 'timeline.user', 'documents', 'payments');
 
         return view('agent.bookings.show', compact('booking'));
     }
