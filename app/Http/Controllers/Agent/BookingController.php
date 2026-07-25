@@ -42,7 +42,11 @@ class BookingController extends Controller
             'package_id'         => ['required', 'exists:packages,id'],
             'package_pricing_id' => ['nullable', 'exists:package_pricings,id'],
             'package_date_id'    => ['nullable', 'exists:package_dates,id'],
-            'customer_id'        => ['required', 'exists:customers,id'],
+            // Either pick one of the agent's customers, or register a new one inline.
+            'customer_id'        => ['required_without:new_customer_name', 'nullable', 'exists:customers,id'],
+            'new_customer_name'  => ['required_without:customer_id', 'nullable', 'string', 'max:255'],
+            'new_customer_phone' => ['required_with:new_customer_name', 'nullable', 'string', 'max:50'],
+            'new_customer_email' => ['nullable', 'email', 'max:255'],
             'type'               => ['required', 'in:' . implode(',', array_keys(Booking::TYPES))],
             'travel_date'        => ['nullable', 'date'],
             'adults'             => ['required', 'integer', 'min:1'],
@@ -55,8 +59,18 @@ class BookingController extends Controller
         ]);
         $data['agent_id'] = $request->user()->id;
 
-        // agent may only book their own customers
-        abort_unless(Customer::where('id', $data['customer_id'])->where('agent_id', $request->user()->id)->exists(), 403);
+        if (empty($data['customer_id'])) {
+            $data['customer_id'] = Customer::create([
+                'agent_id' => $request->user()->id,
+                'name'     => $data['new_customer_name'],
+                'phone'    => $data['new_customer_phone'],
+                'email'    => $data['new_customer_email'] ?? null,
+                'status'   => 'active',
+            ])->id;
+        } else {
+            // agent may only book their own customers
+            abort_unless(Customer::where('id', $data['customer_id'])->where('agent_id', $request->user()->id)->exists(), 403);
+        }
 
         $this->bookings->assertDateSelection(Package::findOrFail($data['package_id']), $data);
 

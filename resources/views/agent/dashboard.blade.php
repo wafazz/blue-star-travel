@@ -251,6 +251,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
         <div class="qa">
           <div class="q" onclick="location.href='{{ route('agent.bookings.create') }}'"><div class="ic i-blue">🧳</div><div class="t">New Booking</div></div>
           <div class="q" onclick="location.href='{{ route('agent.bookings.index') }}'"><div class="ic i-purple">📋</div><div class="t">Bookings</div></div>
+          <div class="q" onclick="location.href='{{ route('agent.customers.index') }}'"><div class="ic i-teal">👥</div><div class="t">Customers</div></div>
           <div class="q" onclick="location.href='{{ route('agent.wallet.index') }}'"><div class="ic i-orange">💳</div><div class="t">Wallet</div></div>
           <div class="q" onclick="location.href='{{ route('agent.commissions') }}'"><div class="ic i-gold">💰</div><div class="t">Commissions</div></div>
           <div class="q" onclick="location.href='{{ route('agent.leaderboard') }}'"><div class="ic i-green">🏆</div><div class="t">Leaderboard</div></div>

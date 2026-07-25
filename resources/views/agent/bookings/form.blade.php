@@ -55,12 +55,28 @@
 
     <div class="card">
       <h3>Customer</h3>
-      <label class="lbl">Select your customer</label>
-      <select name="customer_id" class="inp" required>
-        <option value="">Choose…</option>
-        @foreach ($customers as $c)<option value="{{ $c->id }}" @selected(old('customer_id') == $c->id)>{{ $c->name }}</option>@endforeach
-      </select>
-      @if ($customers->isEmpty())<div class="m" style="color:var(--danger);font-size:12px">No customers assigned to you yet.</div>@endif
+
+      @if ($customers->isNotEmpty())
+        <label class="lbl">Select your customer</label>
+        <select name="customer_id" id="customer_id" class="inp" onchange="toggleNewCustomer()">
+          <option value="">Choose…</option>
+          @foreach ($customers as $c)<option value="{{ $c->id }}" @selected(old('customer_id') == $c->id)>{{ $c->name }}</option>@endforeach
+          <option value="" data-new="1" @selected(old('new_customer_name'))>➕ New customer…</option>
+        </select>
+      @else
+        <div class="m" style="font-size:12px;margin-bottom:10px">You have no customers yet — fill in their details below and they'll be registered to you.</div>
+      @endif
+
+      <div id="newCustomer">
+        <label class="lbl">Name</label>
+        <input type="text" name="new_customer_name" id="new_customer_name" value="{{ old('new_customer_name') }}" class="inp" placeholder="Name as per IC/passport">
+
+        <label class="lbl">Phone No.</label>
+        <input type="text" name="new_customer_phone" id="new_customer_phone" value="{{ old('new_customer_phone') }}" class="inp" placeholder="01X-XXX XXXX">
+
+        <label class="lbl">Email (optional)</label>
+        <input type="email" name="new_customer_email" id="new_customer_email" value="{{ old('new_customer_email') }}" class="inp" placeholder="you@email.com">
+      </div>
     </div>
 
     <div class="card">
@@ -134,6 +150,16 @@
       $('s-adult-line').textContent = money(a * ap); $('s-child-line').textContent = money(c * cp); $('s-senior-line').textContent = money(s * sp); $('s-infant-line').textContent = money(i * ip);
       $('s-total').textContent = money(a * ap + c * cp + s * sp + i * ip);
     }
+    // With no customers the inline fields are the only way to name one, so they stay open.
+    function toggleNewCustomer(){
+      const sel = $('customer_id');
+      const on = !sel || !!sel.selectedOptions[0]?.dataset.new;
+      $('newCustomer').style.display = on ? '' : 'none';
+      $('new_customer_name').required = on;
+      $('new_customer_phone').required = on;
+    }
+    toggleNewCustomer();
+
     $('package_id').addEventListener('change', fillPackage);
     ['package_pricing_id','adults','children','seniors','infants'].forEach(id => $(id).addEventListener('input', recalc));
     fillPackage();

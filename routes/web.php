@@ -20,6 +20,7 @@ use App\Http\Controllers\Manage\AgentController as ManageAgent;
 use App\Http\Controllers\Manage\CompanyController as ManageCompany;
 use App\Http\Controllers\Manage\BookingController as ManageBooking;
 use App\Http\Controllers\Agent\BookingController as AgentBooking;
+use App\Http\Controllers\Agent\CustomerController as AgentCustomer;
 use App\Http\Controllers\Provider\BookingController as ProviderBooking;
 use App\Http\Controllers\BookingDocumentController;
 use App\Http\Controllers\Manage\PaymentController as ManagePayment;
@@ -98,6 +99,13 @@ Route::middleware('guest')->prefix('agent')->group(function () {
 });
 Route::middleware(['auth', 'role:agent'])->prefix('agent')->name('agent.')->group(function () {
     Route::get('/dashboard', [AgentDashboard::class, 'index'])->name('dashboard');
+
+    // Agents register and manage their own customers
+    Route::get('/customers', [AgentCustomer::class, 'index'])->name('customers.index');
+    Route::get('/customers/create', [AgentCustomer::class, 'create'])->name('customers.create');
+    Route::post('/customers', [AgentCustomer::class, 'store'])->name('customers.store');
+    Route::get('/customers/{customer}/edit', [AgentCustomer::class, 'edit'])->name('customers.edit');
+    Route::put('/customers/{customer}', [AgentCustomer::class, 'update'])->name('customers.update');
 
     Route::get('/bookings', [AgentBooking::class, 'index'])->name('bookings.index');
     Route::get('/bookings/create', [AgentBooking::class, 'create'])->name('bookings.create');
