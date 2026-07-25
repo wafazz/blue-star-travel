@@ -14,7 +14,18 @@
   .bt-sidebar a.active{background:linear-gradient(135deg,#1466ff,#0b3fd1);color:#fff}
   .bt-main{flex:1;min-width:0;background:#eef2fb}
   .bt-topbar{background:#fff;border-bottom:1px solid #e7ecf7}
-  @media (max-width: 991.98px){ .bt-sidebar{position:fixed;z-index:1040;left:-260px;transition:.2s} .bt-sidebar.open{left:0} }
+  @media (max-width: 991.98px){
+    /* Fixed drawer: pin it to the viewport and let it scroll itself. Without an
+       explicit height a fixed sidebar can't scroll with the page, so anything
+       past the fold was unreachable. dvh keeps it right when mobile browser
+       chrome shows/hides. */
+    .bt-sidebar{position:fixed;z-index:1040;left:-260px;top:0;bottom:0;
+      height:100vh;height:100dvh;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;transition:left .2s}
+    .bt-sidebar.open{left:0}
+    /* The nav must not win the scroll — the whole drawer does. */
+    .bt-sidebar .nav{overflow:visible !important}
+    .bt-backdrop{position:fixed;inset:0;background:rgba(9,18,44,.45);z-index:1039}
+  }
 </style>
 </head>
 <body>
@@ -48,7 +59,7 @@
   <div class="bt-main d-flex flex-column">
     <header class="bt-topbar d-flex align-items-center justify-content-between px-3 px-lg-4 py-3">
       <div class="d-flex align-items-center gap-2">
-        <button class="btn btn-light d-lg-none" onclick="document.getElementById('sidebar').classList.toggle('open')">☰</button>
+        <button class="btn btn-light d-lg-none" onclick="toggleSidebar()">☰</button>
         <h5 class="mb-0 fw-bold">@yield('heading', 'Dashboard')</h5>
       </div>
       <div class="d-flex align-items-center gap-3">
@@ -85,5 +96,22 @@
   </div>
 
 </div>
+
+<script>
+  // The open drawer covers the ☰ button, so it needs a backdrop to close against.
+  function toggleSidebar(){
+    const sb = document.getElementById('sidebar');
+    const open = sb.classList.toggle('open');
+    let bd = document.querySelector('.bt-backdrop');
+    if (open && !bd) {
+      bd = document.createElement('div');
+      bd.className = 'bt-backdrop d-lg-none';
+      bd.onclick = toggleSidebar;
+      document.body.appendChild(bd);
+    } else if (!open && bd) {
+      bd.remove();
+    }
+  }
+</script>
 </body>
 </html>
