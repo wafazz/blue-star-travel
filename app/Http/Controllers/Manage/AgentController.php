@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Services\AgentTreeService;
 use App\Services\TierService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class AgentController extends Controller
 {
@@ -43,6 +44,7 @@ class AgentController extends Controller
         $kpis = [
             'total'         => User::where('role', 'agent')->count(),
             'active'        => User::where('role', 'agent')->where('status', 'active')->count(),
+            'pending'       => User::where('role', 'agent')->where('status', 'pending')->count(),
             'wallet_total'  => (float) \App\Models\Wallet::whereHas('user', fn ($q) => $q->where('role', 'agent'))->sum('balance'),
             'pending_comm'  => (float) Commission::where('status', 'pending')->where('is_orphan', false)->where('is_hq', false)->sum('amount'),
         ];
@@ -51,6 +53,52 @@ class AgentController extends Controller
         $period    = $this->tiers->currentPeriod();
 
         return view('manage.agents.index', compact('agents', 'kpis', 'tierRules', 'period'));
+    }
+
+    public function create()
+    {
+        return view('manage.agents.form', [
+            'nextCode' => User::nextAgentCode(),
+        ]);
+    }
+
+    public function store(Request $request)
+    {
+        $data = $request->validate([
+            'name'       => ['required', 'string', 'max:120'],
+            'email'      => ['required', 'email', 'max:150', 'unique:users,email'],
+            'phone'      => ['nullable', 'string', 'max:30'],
+            'password'   => ['required', 'string', 'min:8'],
+            'agent_tier' => ['required', 'in:' . implode(',', array_keys(self::TIERS))],
+            'status'     => ['required', 'in:' . implode(',', array_keys(self::STATUSES))],
+            'upline'     => ['nullable', 'string', 'max:20'],
+        ]);
+
+        $upline = null;
+        if (! empty($data['upline'])) {
+            $upline = User::where('role', 'agent')->where('agent_code', $data['upline'])->first();
+            if (! $upline) {
+                return back()->withInput()->withErrors(['upline' => 'No agent found with code ' . $data['upline'] . '.']);
+            }
+        }
+
+        $agent = DB::transaction(function () use ($data, $upline) {
+            $agent = User::create([
+                'name'       => $data['name'],
+                'email'      => $data['email'],
+                'phone'      => $data['phone'] ?? null,
+                'role'       => 'agent',
+                'status'     => $data['status'],
+                'agent_code' => User::nextAgentCode(),
+                'agent_tier' => $data['agent_tier'],
+                'password'   => bcrypt($data['password']),
+            ]);
+            $this->tree->register($agent, $upline);
+
+            return $agent;
+        });
+
+        return redirect()->route('manage.agents.show', $agent)->with('ok', "Agent {$agent->agent_code} created.");
     }
 
     public function saveTierRules(Request $request)

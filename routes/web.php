@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\RegisterController;
+use App\Http\Controllers\Auth\AgentRegisterController;
 use App\Http\Controllers\CatalogController;
 use App\Http\Controllers\Customer\BookingController as CustomerBooking;
 use App\Http\Controllers\Customer\ProfileController as CustomerProfile;
@@ -91,6 +92,9 @@ Route::post('/logout', [LoginController::class, 'logout'])->defaults('portal', '
 Route::middleware('guest')->prefix('agent')->group(function () {
     Route::get('/login', [LoginController::class, 'show'])->defaults('portal', 'agent')->name('agent.login');
     Route::post('/login', [LoginController::class, 'login'])->defaults('portal', 'agent')->middleware('throttle:5,1');
+    // Self-signup — lands `pending`, HQ approves in /manage/agents before the account can sign in.
+    Route::get('/register', [AgentRegisterController::class, 'show'])->name('agent.register');
+    Route::post('/register', [AgentRegisterController::class, 'register'])->middleware('throttle:5,1');
 });
 Route::middleware(['auth', 'role:agent'])->prefix('agent')->name('agent.')->group(function () {
     Route::get('/dashboard', [AgentDashboard::class, 'index'])->name('dashboard');
@@ -186,6 +190,8 @@ Route::middleware(['auth', 'role:super_admin,hq,admin'])->group(function () {
 
         // Agents (MLM network)
         Route::get('agents', [ManageAgent::class, 'index'])->name('agents.index');
+        Route::get('agents/create', [ManageAgent::class, 'create'])->name('agents.create');
+        Route::post('agents', [ManageAgent::class, 'store'])->name('agents.store');
         Route::post('agents/tier-rules', [ManageAgent::class, 'saveTierRules'])->name('agents.tier-rules');
         Route::post('agents/recalculate', [ManageAgent::class, 'recalculate'])->name('agents.recalculate');
         Route::get('agents/{agent}', [ManageAgent::class, 'show'])->name('agents.show');

@@ -14,6 +14,33 @@
       <div style="flex:1;padding:16px 6px;border-left:1px solid var(--line)"><div style="font-size:22px;font-weight:800;color:var(--blue)">{{ auth()->user()->agent_code ?? '—' }}</div><div class="m" style="font-size:11px">My Code</div></div>
     </div>
 
+    @if (auth()->user()->agent_code)
+      @php $recruitLink = route('agent.register', ['ref' => auth()->user()->agent_code]); @endphp
+      <div class="card">
+        <h3>Recruit an Agent</h3>
+        <div class="m" style="font-size:12px;margin-bottom:8px">Share this link — anyone who signs up through it joins your downline once HQ approves them.</div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input id="recruitLink" type="text" readonly value="{{ $recruitLink }}"
+                 style="flex:1;min-width:0;border:1px solid var(--line);border-radius:10px;padding:9px 11px;font-size:11.5px;background:#f7f9fc;color:#334">
+          <button type="button" id="recruitCopy" onclick="copyRecruit(this)"
+                  style="border:none;border-radius:10px;padding:10px 13px;font-size:12px;font-weight:800;background:var(--blue);color:#fff;flex:0 0 auto">Copy</button>
+        </div>
+      </div>
+      <script>
+        // navigator.clipboard is undefined on plain http, so fall back to execCommand.
+        function copyRecruit(btn){
+          const f = document.getElementById('recruitLink');
+          f.select(); f.setSelectionRange(0, 99999);
+          const done = () => { btn.textContent = 'Copied ✓'; setTimeout(() => btn.textContent = 'Copy', 1800); };
+          if (navigator.clipboard) {
+            navigator.clipboard.writeText(f.value).then(done, () => { document.execCommand('copy'); done(); });
+          } else {
+            document.execCommand('copy'); done();
+          }
+        }
+      </script>
+    @endif
+
     <div class="card">
       <h3>Downline Members</h3>
       @forelse ($rows as $r)

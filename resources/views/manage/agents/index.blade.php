@@ -9,12 +9,23 @@
 @endphp
 
 @section('content')
+  <div class="d-flex justify-content-end mb-3">
+    <a href="{{ route('manage.agents.create') }}" class="btn btn-brand">➕ New Agent</a>
+  </div>
+
   <div class="row g-3 mb-3">
     <div class="col-6 col-lg-3"><div class="card p-3"><div class="fs-4 fw-bold text-primary">{{ $kpis['total'] }}</div><div class="text-secondary small">Total Agents</div></div></div>
     <div class="col-6 col-lg-3"><div class="card p-3"><div class="fs-4 fw-bold text-success">{{ $kpis['active'] }}</div><div class="text-secondary small">Active</div></div></div>
     <div class="col-6 col-lg-3"><div class="card p-3"><div class="fs-4 fw-bold text-dark">RM {{ number_format($kpis['wallet_total'], 2) }}</div><div class="text-secondary small">Wallet Balances</div></div></div>
     <div class="col-6 col-lg-3"><div class="card p-3"><div class="fs-4 fw-bold text-warning">RM {{ number_format($kpis['pending_comm'], 2) }}</div><div class="text-secondary small">Pending Commission</div></div></div>
   </div>
+
+  @if ($kpis['pending'])
+    <div class="alert alert-warning d-flex flex-wrap justify-content-between align-items-center gap-2 py-2 px-3">
+      <span class="small">⏳ <strong>{{ $kpis['pending'] }}</strong> agent {{ Str::plural('application', $kpis['pending']) }} awaiting approval — a pending account cannot sign in until you set it to Active.</span>
+      <a href="{{ route('manage.agents.index', ['status' => 'pending']) }}" class="btn btn-sm btn-warning">Review</a>
+    </div>
+  @endif
 
   <div class="card p-3 p-lg-4 mb-3">
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">

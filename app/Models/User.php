@@ -160,6 +160,22 @@ class User extends Authenticatable
         return self::ROLE_HOME[$this->role] ?? 'login';
     }
 
+    /**
+     * Next free agent code, BT-AG001 upwards. Reads the highest numeric suffix
+     * rather than counting rows, so deleted agents never hand a code out twice.
+     */
+    public static function nextAgentCode(): string
+    {
+        $codes = static::where('agent_code', 'like', 'BT-AG%')->pluck('agent_code');
+        $max = 0;
+        foreach ($codes as $code) {
+            $n = (int) substr((string) $code, 5);
+            $max = $n > $max ? $n : $max;
+        }
+
+        return 'BT-AG' . str_pad($max + 1, 3, '0', STR_PAD_LEFT);
+    }
+
     public function initials(): string
     {
         $parts = preg_split('/\s+/', trim((string) $this->name)) ?: [];

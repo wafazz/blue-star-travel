@@ -21,6 +21,10 @@
     <h2>Welcome back 👋</h2>
     <div class="sub">Sign in to your agent account to continue</div>
 
+    @if (session('ok'))
+      <div class="hintbox" style="margin:0 0 14px">✅ {{ session('ok') }}</div>
+    @endif
+
     @if ($errors->any())
       <div class="err">⚠️ <span>{{ $errors->first() }}</span></div>
     @endif
@@ -85,7 +89,7 @@
   </div>
 
   <div class="foot">
-    New agent? <a onclick="toast('Registration requires HQ approval')">Request an account</a>
+    New agent? <a href="{{ route('agent.register') }}">Request an account</a>
   </div>
 </div>
 
