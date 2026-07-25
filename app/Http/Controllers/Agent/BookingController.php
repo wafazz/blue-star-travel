@@ -58,6 +58,8 @@ class BookingController extends Controller
         // agent may only book their own customers
         abort_unless(Customer::where('id', $data['customer_id'])->where('agent_id', $request->user()->id)->exists(), 403);
 
+        $this->bookings->assertDateSelection(Package::findOrFail($data['package_id']), $data);
+
         $booking = $this->bookings->create($data, $request->user(), $request->input('pax', []));
 
         return redirect()->route('agent.bookings.show', $booking)->with('ok', "Booking {$booking->booking_no} submitted.");

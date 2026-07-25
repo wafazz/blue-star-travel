@@ -26,6 +26,38 @@ class Package extends Model
 
     const STATUSES = ['draft' => 'Draft', 'active' => 'Active', 'inactive' => 'Inactive'];
 
+    const DATE_MODES = [
+        'fixed' => 'Scheduled departures only',
+        'open'  => 'Open date — traveller picks',
+        'both'  => 'Both — departure or own date',
+    ];
+
+    /** Departures must be published and a booking must pick one. */
+    public function requiresDeparture(): bool
+    {
+        return $this->date_mode === 'fixed';
+    }
+
+    /** The traveller may name their own travel date. */
+    public function allowsOpenDate(): bool
+    {
+        return $this->date_mode !== 'fixed';
+    }
+
+    /** Departures a booking may still be placed against. */
+    public function bookableDates()
+    {
+        if ($this->date_mode === 'open') {
+            return collect();
+        }
+
+        return $this->dates
+            ->where('status', 'open')
+            ->filter(fn ($d) => $d->seats_total == 0 || $d->seatsAvailable() > 0)
+            ->sortBy('depart_date')
+            ->values();
+    }
+
     public function provider(): BelongsTo
     {
         return $this->belongsTo(Provider::class);

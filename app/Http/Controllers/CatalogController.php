@@ -79,10 +79,7 @@ class CatalogController extends Controller
         $package = Package::with('pricings', 'provider', 'dates')
             ->where('slug', $slug)->where('status', 'active')->firstOrFail();
 
-        $dates = $package->dates
-            ->where('status', 'open')
-            ->filter(fn ($d) => $d->seats_total - $d->seats_booked > 0)
-            ->sortBy('depart_date');
+        $dates = $package->bookableDates();
 
         return view('catalog.show', compact('package', 'dates'));
     }

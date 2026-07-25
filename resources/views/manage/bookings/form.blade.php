@@ -16,11 +16,12 @@
       'infant_price'=> (float) $pr->infant_price,
       'is_default'  => (bool) $pr->is_default,
     ])->values(),
-    'dates' => $p->dates->map(fn ($d) => [
+    'date_mode' => $p->date_mode,
+    'dates' => $p->bookableDates()->map(fn ($d) => [
       'id'    => $d->id,
       'label' => $d->depart_date?->format('d M Y') . ($d->return_date ? ' → ' . $d->return_date->format('d M Y') : ''),
       'depart'=> $d->depart_date?->format('Y-m-d'),
-      'seats' => $d->seatsAvailable(),
+      'seats' => $d->seats_total > 0 ? $d->seatsAvailable() : null,
     ])->values(),
   ])->keyBy('id');
 @endphp
@@ -45,9 +46,10 @@
             <label class="form-label small fw-semibold">Pricing Tier</label>
             <select name="package_pricing_id" id="package_pricing_id" class="form-select"></select>
           </div>
-          <div class="col-md-6">
+          <div class="col-md-6" id="departureWrap">
             <label class="form-label small fw-semibold">Departure Date</label>
             <select name="package_date_id" id="package_date_id" class="form-select"><option value="">—</option></select>
+            <div class="form-text small" id="dateNote"></div>
           </div>
           <div class="col-md-6">
             <label class="form-label small fw-semibold">Booking Type</label>
@@ -57,9 +59,10 @@
               @endforeach
             </select>
           </div>
-          <div class="col-md-6">
-            <label class="form-label small fw-semibold">Travel Date (override)</label>
+          <div class="col-md-6" id="travelWrap">
+            <label class="form-label small fw-semibold">Travel Date</label>
             <input type="date" name="travel_date" value="{{ old('travel_date') }}" class="form-control" id="travel_date">
+            <div class="form-text small">Set by the departure when one is chosen.</div>
           </div>
         </div>
       </div>
@@ -159,12 +162,31 @@
         });
         pkg.dates.forEach(d => {
           const o = document.createElement('option');
-          o.value = d.id; o.textContent = d.label + (d.seats ? ' (' + d.seats + ' seats)' : ' (full)');
+          o.value = d.id; o.textContent = d.label + (d.seats === null ? '' : ' (' + d.seats + ' seats left)');
           o.dataset.depart = d.depart || '';
           ds.appendChild(o);
         });
+        if (!pkg.dates.length && pkg.date_mode !== 'open') ds.innerHTML = '<option value="">No departures available</option>';
       }
+      applyDateMode(pkg);
       recalc();
+    }
+
+    // fixed = must pick a departure · open = must name a date · both = either
+    const DATE_NOTES = {
+      fixed: 'Scheduled departures only — one must be chosen.',
+      open:  'Open-dated package — set the travel date instead.',
+      both:  'Pick a departure, or leave blank and set a travel date.',
+    };
+    function applyDateMode(pkg) {
+      const mode = pkg ? pkg.date_mode : 'fixed';
+      $('departureWrap').style.display = mode === 'open' ? 'none' : '';
+      $('travelWrap').style.display = mode === 'fixed' ? 'none' : '';
+      $('dateNote').textContent = pkg ? (DATE_NOTES[mode] || '') : '';
+      $('package_date_id').required = mode === 'fixed';
+      $('travel_date').required = mode === 'open';
+      if (mode === 'open') $('package_date_id').value = '';
+      if (mode === 'fixed') $('travel_date').value = '';
     }
 
     function recalc() {

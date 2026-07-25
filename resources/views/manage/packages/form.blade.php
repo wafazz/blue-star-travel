@@ -46,6 +46,15 @@
               <label class="form-label fw-semibold small">Nights *</label>
               <input type="number" name="duration_nights" value="{{ old('duration_nights', $package->duration_nights ?? 0) }}" class="form-control" min="0" required>
             </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold small">Travel Date Mode *</label>
+              <select name="date_mode" id="dateMode" class="form-select" onchange="toggleDates()">
+                @foreach (\App\Models\Package::DATE_MODES as $k => $label)
+                  <option value="{{ $k }}" @selected(old('date_mode', $package->date_mode ?? 'fixed') === $k)>{{ $label }}</option>
+                @endforeach
+              </select>
+              <div class="form-text small" id="dateModeHint"></div>
+            </div>
             <div class="col-12">
               <label class="form-label fw-semibold small">Summary</label>
               <textarea name="summary" rows="2" class="form-control" maxlength="500">{{ old('summary', $package->summary) }}</textarea>
@@ -88,11 +97,12 @@
         </div>
 
         <!-- Travel dates -->
-        <div class="card p-4">
+        <div class="card p-4" id="datesCard">
           <div class="d-flex justify-content-between align-items-center mb-3">
             <h6 class="fw-bold mb-0">Travel Dates &amp; Seats</h6>
             <button type="button" class="btn btn-sm btn-outline-primary" onclick="addDate()">＋ Add Date</button>
           </div>
+          <div class="small text-secondary mb-2">Leave <strong>Seats Total</strong> at 0 for an uncapped departure.</div>
           <div class="table-responsive">
             <table class="table table-sm align-middle mb-0">
               <thead class="text-secondary small"><tr><th>Depart</th><th>Return</th><th>Seats Total</th><th>Booked</th><th>Status</th><th></th></tr></thead>
@@ -209,6 +219,20 @@
     }
     document.querySelectorAll('.commission-row .hq-toggle:checked').forEach(onHqChange);
     function removeRow(btn, sel){ btn.closest(sel).remove(); }
+
+    // Open-dated packages publish no departures, so hide the whole card for that mode.
+    const DATE_HINTS = {
+      fixed: 'Bookings must pick one of the departures below. Seats are enforced.',
+      open:  'No departures — the traveller names their own travel date. Any departures below are discarded on save.',
+      both:  'The traveller may pick a departure below or name their own date.',
+    };
+    function toggleDates(){
+      const mode = document.getElementById('dateMode').value;
+      document.getElementById('dateModeHint').textContent = DATE_HINTS[mode] || '';
+      document.getElementById('datesCard').style.display = mode === 'open' ? 'none' : '';
+    }
+    toggleDates();
+
     @if (empty($dates)) addDate(); @endif
   </script>
 @endsection

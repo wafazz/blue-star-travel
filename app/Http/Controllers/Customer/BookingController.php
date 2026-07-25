@@ -57,6 +57,8 @@ class BookingController extends Controller
         $data['agent_id']    = $customer->agent_id;
         $data['type']        = 'online';
 
+        $this->bookings->assertDateSelection(Package::findOrFail($data['package_id']), $data);
+
         $booking = $this->bookings->create($data, $request->user(), [
             ['name' => $customer->name, 'type' => 'adult', 'ic_passport_no' => $customer->ic_passport_no, 'is_lead' => true],
         ]);

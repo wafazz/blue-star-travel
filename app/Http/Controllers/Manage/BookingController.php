@@ -48,6 +48,7 @@ class BookingController extends Controller
     public function store(Request $request)
     {
         $data = $this->validated($request);
+        $this->bookings->assertDateSelection(Package::findOrFail($data['package_id']), $data);
         $booking = $this->bookings->create($data, $request->user(), $request->input('pax', []));
 
         return redirect()->route('manage.bookings.show', $booking)->with('ok', "Booking {$booking->booking_no} created.");

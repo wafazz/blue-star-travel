@@ -61,37 +61,37 @@ class CatalogSeeder extends Seeder
         $packages = [
             [
                 'title' => 'Umrah Premium 12 Days', 'category' => 'umrah', 'provider' => 'Saudi Umrah Operator',
-                'destination' => 'Makkah & Madinah', 'days' => 12, 'nights' => 11, 'featured' => true, 'status' => 'active',
+                'destination' => 'Makkah & Madinah', 'date_mode' => 'fixed', 'days' => 12, 'nights' => 11, 'featured' => true, 'status' => 'active',
                 'summary' => 'A blessed 12-day Umrah journey with 5-star hotels near the Haram.',
                 'adult' => 8900, 'child' => 6900, 'infant' => 1500, 'promo' => 8500,
             ],
             [
                 'title' => 'Bali Free & Easy 5D4N', 'category' => 'free_easy', 'provider' => 'Bali Local Guides',
-                'destination' => 'Bali, Indonesia', 'days' => 5, 'nights' => 4, 'featured' => true, 'status' => 'active',
+                'destination' => 'Bali, Indonesia', 'date_mode' => 'both', 'days' => 5, 'nights' => 4, 'featured' => true, 'status' => 'active',
                 'summary' => 'Relax your way — flights, villa stay and airport transfers included.',
                 'adult' => 3200, 'child' => 2400, 'infant' => 600, 'promo' => null,
             ],
             [
                 'title' => 'Tokyo Discovery 7D6N', 'category' => 'international', 'provider' => 'Sakura Coach Japan',
-                'destination' => 'Tokyo, Japan', 'days' => 7, 'nights' => 6, 'featured' => true, 'status' => 'active',
+                'destination' => 'Tokyo, Japan', 'date_mode' => 'fixed', 'days' => 7, 'nights' => 6, 'featured' => true, 'status' => 'active',
                 'summary' => 'Explore Tokyo, Mt. Fuji and Disneyland with a guided coach tour.',
                 'adult' => 11800, 'child' => 9800, 'infant' => 2000, 'promo' => 11200,
             ],
             [
                 'title' => 'Langkawi Cruise 3D2N', 'category' => 'cruise', 'provider' => 'Star Cruise Lines',
-                'destination' => 'Langkawi, Malaysia', 'days' => 3, 'nights' => 2, 'featured' => false, 'status' => 'active',
+                'destination' => 'Langkawi, Malaysia', 'date_mode' => 'fixed', 'days' => 3, 'nights' => 2, 'featured' => false, 'status' => 'active',
                 'summary' => 'Set sail around Langkawi with full-board dining and entertainment.',
                 'adult' => 2450, 'child' => 1800, 'infant' => 400, 'promo' => null,
             ],
             [
                 'title' => 'Phuket Getaway 4D3N', 'category' => 'international', 'provider' => 'Grand Hotel KL',
-                'destination' => 'Phuket, Thailand', 'days' => 4, 'nights' => 3, 'featured' => false, 'status' => 'active',
+                'destination' => 'Phuket, Thailand', 'date_mode' => 'open', 'days' => 4, 'nights' => 3, 'featured' => false, 'status' => 'active',
                 'summary' => 'Sun, sand and island hopping in beautiful Phuket.',
                 'adult' => 2100, 'child' => 1600, 'infant' => 350, 'promo' => 1950,
             ],
             [
                 'title' => 'Cameron Highlands Getaway 3D2N', 'category' => 'domestic', 'provider' => 'Grand Hotel KL',
-                'destination' => 'Cameron Highlands, Malaysia', 'days' => 3, 'nights' => 2, 'featured' => false, 'status' => 'active',
+                'destination' => 'Cameron Highlands, Malaysia', 'date_mode' => 'open', 'days' => 3, 'nights' => 2, 'featured' => false, 'status' => 'active',
                 'summary' => 'Cool weather, tea plantations and strawberry farms.',
                 'adult' => 890, 'child' => 650, 'infant' => 150, 'promo' => null,
             ],
@@ -109,6 +109,7 @@ class CatalogSeeder extends Seeder
                     'destination' => $p['destination'],
                     'duration_days'   => $p['days'],
                     'duration_nights' => $p['nights'],
+                    'date_mode'       => $p['date_mode'],
                     'summary'     => $p['summary'],
                     'description' => $p['summary'],
                     'itinerary'   => "Day 1: Arrival & check-in\nDay 2: Guided tour\nDay 3: Free & easy / departure",
@@ -153,7 +154,7 @@ class CatalogSeeder extends Seeder
             }
 
             $package->dates()->delete();
-            foreach ([30, 60, 90] as $offset) {
+            foreach ($p['date_mode'] === 'open' ? [] : [30, 60, 90] as $offset) {
                 $depart = now()->addDays($offset)->startOfDay();
                 $package->dates()->create([
                     'depart_date' => $depart->toDateString(),

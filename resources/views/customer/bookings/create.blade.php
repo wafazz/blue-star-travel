@@ -24,16 +24,27 @@
           @endforeach
         </select>
 
-        <label class="lbl">Departure</label>
-        <select name="package_date_id" class="inp">
-          <option value="">Flexible / contact me</option>
-          @foreach ($package->dates->where('status', 'open') as $d)
-            <option value="{{ $d->id }}">{{ $d->depart_date->format('d M Y') }} ({{ $d->seats_total - $d->seats_booked }} seats left)</option>
-          @endforeach
-        </select>
+        @if ($package->date_mode !== 'open')
+          <label class="lbl">Departure{{ $package->requiresDeparture() ? '' : ' (optional)' }}</label>
+          <select name="package_date_id" class="inp" @required($package->requiresDeparture())>
+            @unless ($package->requiresDeparture())
+              <option value="">I'll pick my own date</option>
+            @endunless
+            @forelse ($package->bookableDates() as $d)
+              <option value="{{ $d->id }}" @selected(old('package_date_id') == $d->id)>
+                {{ $d->depart_date->format('d M Y') }}{{ $d->seats_total > 0 ? ' (' . $d->seatsAvailable() . ' seats left)' : '' }}
+              </option>
+            @empty
+              <option value="" disabled>No departures available</option>
+            @endforelse
+          </select>
+        @endif
 
-        <label class="lbl">Preferred travel date (optional)</label>
-        <input type="date" name="travel_date" value="{{ old('travel_date') }}" class="inp">
+        @if ($package->allowsOpenDate())
+          <label class="lbl">Travel date{{ $package->date_mode === 'open' ? '' : ' (if not booking a departure)' }}</label>
+          <input type="date" name="travel_date" value="{{ old('travel_date') }}" class="inp"
+                 min="{{ now()->addDay()->format('Y-m-d') }}" @required($package->date_mode === 'open')>
+        @endif
       </div>
 
       <div class="card">

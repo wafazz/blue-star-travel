@@ -8,6 +8,7 @@ use App\Models\Provider;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 class PackageController extends Controller
 {
@@ -41,6 +42,7 @@ class PackageController extends Controller
     public function store(Request $request)
     {
         $data = $this->validated($request);
+        $this->assertDepartures($request, $data);
         $data['code'] = $this->nextCode();
         $data['slug'] = $this->uniqueSlug($data['title']);
         $data['featured'] = $request->boolean('featured');
@@ -78,6 +80,7 @@ class PackageController extends Controller
     public function update(Request $request, Package $package)
     {
         $data = $this->validated($request);
+        $this->assertDepartures($request, $data);
         $data['slug'] = $this->uniqueSlug($data['title'], $package->id);
         $data['featured'] = $request->boolean('featured');
 
@@ -119,6 +122,7 @@ class PackageController extends Controller
             'destination'     => ['nullable', 'string', 'max:255'],
             'duration_days'   => ['required', 'integer', 'min:1', 'max:365'],
             'duration_nights' => ['required', 'integer', 'min:0', 'max:365'],
+            'date_mode'       => ['required', 'in:' . implode(',', array_keys(Package::DATE_MODES))],
             'summary'         => ['nullable', 'string', 'max:500'],
             'description'     => ['nullable', 'string'],
             'itinerary'       => ['nullable', 'string'],
@@ -198,10 +202,33 @@ class PackageController extends Controller
         }
     }
 
+    /**
+     * A live "scheduled departures only" package with no departures cannot be booked at all.
+     * Drafts are left alone so a package can be built up over several saves.
+     */
+    private function assertDepartures(Request $request, array $data): void
+    {
+        if ($data['date_mode'] !== 'fixed' || $data['status'] !== 'active') {
+            return;
+        }
+
+        $rows = array_filter($request->input('dates', []), fn ($r) => ! empty($r['depart_date']));
+        if (empty($rows)) {
+            throw ValidationException::withMessages([
+                'dates' => 'A scheduled-departures package must have at least one departure date before it can be active.',
+            ]);
+        }
+    }
+
     private function syncDates(Request $request, Package $package): void
     {
         $rows = $request->input('dates', []);
         $package->dates()->delete();
+
+        // An open-dated package has no departures to publish.
+        if ($package->date_mode === 'open') {
+            return;
+        }
 
         foreach ($rows as $row) {
             if (empty($row['depart_date'])) {

@@ -8,6 +8,7 @@ use App\Models\Payment;
 use App\Models\User;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class BookingService
 {
@@ -35,11 +36,72 @@ class BookingService
         return $prefix . str_pad((string) $seq, 5, '0', STR_PAD_LEFT);
     }
 
+    /**
+     * Enforce the package's date_mode against a booking request, and check seats on a
+     * chosen departure. Called by every portal before create() so the three booking
+     * forms cannot drift apart. Throws ValidationException keyed to the offending field.
+     */
+    public function assertDateSelection(Package $package, array $data): void
+    {
+        $dateId = $data['package_date_id'] ?? null;
+        $travelDate = $data['travel_date'] ?? null;
+
+        if ($dateId) {
+            if ($package->date_mode === 'open') {
+                throw ValidationException::withMessages([
+                    'package_date_id' => 'This package is open-dated — pick a travel date instead of a departure.',
+                ]);
+            }
+
+            $departure = $package->dates()->find($dateId);
+            if (! $departure || $departure->package_id !== $package->id) {
+                throw ValidationException::withMessages([
+                    'package_date_id' => 'That departure does not belong to this package.',
+                ]);
+            }
+            if ($departure->status !== 'open') {
+                throw ValidationException::withMessages([
+                    'package_date_id' => 'That departure is ' . $departure->status . ' and cannot be booked.',
+                ]);
+            }
+
+            $pax = (int) ($data['adults'] ?? 1) + (int) ($data['children'] ?? 0)
+                + (int) ($data['seniors'] ?? 0) + (int) ($data['infants'] ?? 0);
+
+            // seats_total 0 means "unlimited" — the seeded showcase uses it that way.
+            if ($departure->seats_total > 0 && $pax > $departure->seatsAvailable()) {
+                throw ValidationException::withMessages([
+                    'package_date_id' => 'Only ' . $departure->seatsAvailable() . ' seat(s) left on that departure — you asked for ' . $pax . '.',
+                ]);
+            }
+
+            return;
+        }
+
+        if ($package->requiresDeparture()) {
+            throw ValidationException::withMessages([
+                'package_date_id' => 'This package runs on scheduled departures — choose one.',
+            ]);
+        }
+
+        if (! $travelDate) {
+            throw ValidationException::withMessages([
+                'travel_date' => 'Choose your travel date.',
+            ]);
+        }
+    }
+
     public function create(array $data, ?User $actor, array $paxRows = []): Booking
     {
         return DB::transaction(function () use ($data, $actor, $paxRows) {
             $package = Package::findOrFail($data['package_id']);
             $pricing = $package->pricings()->find($data['package_pricing_id'] ?? null) ?? $package->defaultPricing();
+
+            // A departure fixes the travel date — never let the two disagree.
+            $departure = ! empty($data['package_date_id']) ? $package->dates()->find($data['package_date_id']) : null;
+            if ($departure) {
+                $data['travel_date'] = $departure->depart_date;
+            }
 
             $adults   = (int) ($data['adults'] ?? 1);
             $children = (int) ($data['children'] ?? 0);

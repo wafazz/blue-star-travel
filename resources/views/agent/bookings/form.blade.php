@@ -12,10 +12,12 @@
       'infant_price' => (float) $pr->infant_price,
       'is_default' => (bool) $pr->is_default,
     ])->values(),
-    'dates' => $p->dates->map(fn ($d) => [
+    'date_mode' => $p->date_mode,
+    'dates' => $p->bookableDates()->map(fn ($d) => [
       'id' => $d->id,
       'label' => $d->depart_date?->format('d M Y') . ($d->return_date ? ' → ' . $d->return_date->format('d M Y') : ''),
-      'depart' => $d->depart_date?->format('Y-m-d'), 'seats' => $d->seatsAvailable(),
+      'depart' => $d->depart_date?->format('Y-m-d'),
+      'seats' => $d->seats_total > 0 ? $d->seatsAvailable() : null,
     ])->values(),
   ])->keyBy('id');
 @endphp
@@ -39,8 +41,15 @@
       </select>
       <label class="lbl">Pricing tier</label>
       <select name="package_pricing_id" id="package_pricing_id" class="inp"></select>
-      <label class="lbl">Departure date</label>
-      <select name="package_date_id" id="package_date_id" class="inp"><option value="">—</option></select>
+      <div id="departureWrap">
+        <label class="lbl">Departure date</label>
+        <select name="package_date_id" id="package_date_id" class="inp"><option value="">—</option></select>
+      </div>
+      <div id="travelWrap">
+        <label class="lbl">Travel date</label>
+        <input type="date" name="travel_date" id="travel_date" value="{{ old('travel_date') }}" class="inp" min="{{ now()->addDay()->format('Y-m-d') }}">
+      </div>
+      <div class="m" id="dateNote" style="font-size:11.5px;margin:-6px 0 10px"></div>
       <input type="hidden" name="type" value="online">
     </div>
 
@@ -89,14 +98,32 @@
       if (!pkg) return null;
       return pkg.pricings.find(p => p.id == $('package_pricing_id').value) || pkg.pricings[0] || null;
     }
+    // fixed = must pick a departure · open = must name a date · both = either
+    const DATE_NOTES = {
+      fixed: 'This package runs on scheduled departures — choose one.',
+      open:  'Open-dated package — choose when you want to travel.',
+      both:  'Pick a scheduled departure, or leave it blank and name your own travel date.',
+    };
+    function applyDateMode(pkg) {
+      const mode = pkg ? pkg.date_mode : 'fixed';
+      $('departureWrap').style.display = mode === 'open' ? 'none' : '';
+      $('travelWrap').style.display = mode === 'fixed' ? 'none' : '';
+      $('dateNote').textContent = pkg ? (DATE_NOTES[mode] || '') : '';
+      $('package_date_id').required = mode === 'fixed';
+      $('travel_date').required = mode === 'open';
+      if (mode === 'open') $('package_date_id').value = '';
+      if (mode === 'fixed') $('travel_date').value = '';
+    }
     function fillPackage() {
       const pkg = PKGS[$('package_id').value];
       const ps = $('package_pricing_id'), ds = $('package_date_id');
       ps.innerHTML = ''; ds.innerHTML = '<option value="">—</option>';
       if (pkg) {
         pkg.pricings.forEach(p => { const o = document.createElement('option'); o.value = p.id; o.textContent = p.tier_name + ' — ' + money(p.adult_price); if (p.is_default) o.selected = true; ps.appendChild(o); });
-        pkg.dates.forEach(d => { const o = document.createElement('option'); o.value = d.id; o.textContent = d.label + (d.seats ? ' (' + d.seats + ' seats)' : ' (full)'); ds.appendChild(o); });
+        pkg.dates.forEach(d => { const o = document.createElement('option'); o.value = d.id; o.textContent = d.label + (d.seats === null ? '' : ' (' + d.seats + ' seats left)'); ds.appendChild(o); });
+        if (!pkg.dates.length && pkg.date_mode !== 'open') ds.innerHTML = '<option value="">No departures available</option>';
       }
+      applyDateMode(pkg);
       recalc();
     }
     function recalc() {

@@ -33,15 +33,22 @@
     </div>
 
     <div class="card">
-      <h3>Available Departures</h3>
-      @forelse ($dates as $d)
-        <div class="sum">
-          <span style="color:var(--muted)">{{ $d->depart_date->format('d M Y') }} → {{ optional($d->return_date)->format('d M Y') }}</span>
-          <span class="badge b-success">{{ $d->seats_total - $d->seats_booked }} seats</span>
-        </div>
-      @empty
-        <div style="font-size:13px;color:var(--muted)">No fixed departures — contact us for custom dates.</div>
-      @endforelse
+      <h3>{{ $package->date_mode === 'open' ? 'Travel Dates' : 'Available Departures' }}</h3>
+      @if ($package->date_mode === 'open')
+        <div style="font-size:13px;color:var(--muted)">📅 Open-dated — travel whenever suits you. Pick your date when you book.</div>
+      @else
+        @forelse ($dates as $d)
+          <div class="sum">
+            <span style="color:var(--muted)">{{ $d->depart_date->format('d M Y') }} → {{ optional($d->return_date)->format('d M Y') }}</span>
+            <span class="badge b-success">{{ $d->seats_total > 0 ? $d->seatsAvailable() . ' seats' : 'Open' }}</span>
+          </div>
+        @empty
+          <div style="font-size:13px;color:var(--muted)">No departures open right now — contact us for custom dates.</div>
+        @endforelse
+        @if ($package->allowsOpenDate())
+          <div style="font-size:13px;color:var(--muted);margin-top:8px">📅 Prefer other dates? You can also name your own when booking.</div>
+        @endif
+      @endif
     </div>
 
     @if ($package->itinerary)
