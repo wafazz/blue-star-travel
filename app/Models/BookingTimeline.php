@@ -11,6 +11,11 @@ class BookingTimeline extends Model
 
     protected $guarded = [];
 
+    public function version(): BelongsTo
+    {
+        return $this->belongsTo(BookingVersion::class, 'booking_version_id');
+    }
+
     public function booking(): BelongsTo
     {
         return $this->belongsTo(Booking::class);

@@ -61,6 +61,14 @@
             <input type="date" name="travel_date" value="{{ old('travel_date') }}" class="form-control" id="travel_date">
             <div class="form-text small">Set by the departure when one is chosen.</div>
           </div>
+          <div class="col-md-8">
+            <label class="form-label small fw-semibold">Pickup Location</label>
+            <input type="text" name="pickup_location" value="{{ old('pickup_location') }}" class="form-control" placeholder="e.g. KLIA2 Gate C, Level 2">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label small fw-semibold">Arrival Time</label>
+            <input type="time" name="arrival_time" value="{{ old('arrival_time') }}" class="form-control">
+          </div>
         </div>
       </div>
 

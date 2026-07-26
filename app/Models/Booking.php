@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Booking extends Model
 {
@@ -19,12 +20,15 @@ class Booking extends Model
         'rejected_at'           => 'datetime',
         'cancelled_at'          => 'datetime',
         'completed_at'          => 'datetime',
+        'revision_requested_at' => 'datetime',
+        'resubmitted_at'        => 'datetime',
     ];
 
     const STATUSES = [
         'draft'                         => 'Draft',
         'pending_payment'               => 'Pending Payment',
         'pending_verification'          => 'Pending Verification',
+        'needs_revision'                => 'Needs Revision',
         'waiting_provider_confirmation' => 'Waiting Provider',
         'confirmed'                     => 'Confirmed',
         'rejected'                      => 'Rejected',
@@ -37,12 +41,53 @@ class Booking extends Model
         'draft'                         => 'secondary',
         'pending_payment'               => 'warning',
         'pending_verification'          => 'info',
+        'needs_revision'                => 'warning',
         'waiting_provider_confirmation' => 'primary',
         'confirmed'                     => 'success',
         'rejected'                      => 'danger',
         'cancelled'                     => 'secondary',
         'completed'                     => 'success',
         'refunded'                      => 'dark',
+    ];
+
+    // The agent portal collapses the 10 staff statuses into the 6 labels the client
+    // asked for. Staff screens keep STATUSES; only this side simplifies.
+    const AGENT_STATUS = [
+        'draft'                         => ['Draft', 'secondary'],
+        'pending_payment'               => ['Submitted', 'info'],
+        'pending_verification'          => ['Submitted', 'info'],
+        // "Approved" in the client's Status Guide = admin accepted the information and
+        // passed it to the provider. It is not yet a confirmed booking.
+        'waiting_provider_confirmation' => ['Approved', 'primary'],
+        'needs_revision'                => ['Need Revision', 'warning'],
+        'confirmed'                     => ['Confirmed', 'success'],
+        'completed'                     => ['Completed', 'dark'],
+        'rejected'                      => ['Cancelled', 'danger'],
+        'cancelled'                     => ['Cancelled', 'danger'],
+        'refunded'                      => ['Cancelled', 'danger'],
+    ];
+
+    // Tabs filter by LABEL, not status — a "Submitted" tab wired to a single status
+    // would silently hide bookings in the other statuses that share the label.
+    const AGENT_TABS = [
+        'draft'          => 'Draft',
+        'submitted'      => 'Submitted',
+        'needs_revision' => 'Need Revision',
+        'approved'       => 'Approved',
+        'confirmed'      => 'Confirmed',
+        'completed'      => 'Completed',
+        'cancelled'      => 'Cancelled',
+    ];
+
+    /** The client's Status Guide legend: label → [badge, what it means]. */
+    const AGENT_STATUS_GUIDE = [
+        'Draft'         => ['secondary', 'Not submitted yet'],
+        'Submitted'     => ['info', 'Waiting for review'],
+        'Need Revision' => ['warning', 'Revision requested by admin'],
+        'Approved'      => ['primary', 'Information approved'],
+        'Confirmed'     => ['success', 'Booking confirmed'],
+        'Completed'     => ['dark', 'Trip finished'],
+        'Cancelled'     => ['danger', 'Booking cancelled'],
     ];
 
     const TYPES = [
@@ -101,7 +146,50 @@ class Booking extends Model
 
     public function timeline(): HasMany
     {
-        return $this->hasMany(BookingTimeline::class)->latest();
+        // id breaks the tie: several events can share a second, and `latest()` alone
+        // would render them in an arbitrary order in the Activity Log.
+        return $this->hasMany(BookingTimeline::class)->latest()->latest('id');
+    }
+
+    public function revisionRequests(): HasMany
+    {
+        return $this->hasMany(BookingRevisionRequest::class)->latest();
+    }
+
+    public function openRevisionRequest(): HasOne
+    {
+        return $this->hasOne(BookingRevisionRequest::class)->where('status', 'open')->latestOfMany();
+    }
+
+    public function amendments(): HasMany
+    {
+        return $this->hasMany(BookingAmendment::class)->latest();
+    }
+
+    public function openAmendment(): HasOne
+    {
+        return $this->hasOne(BookingAmendment::class)->where('status', 'pending')->latestOfMany();
+    }
+
+    public function versions(): HasMany
+    {
+        return $this->hasMany(BookingVersion::class)->orderByDesc('version');
+    }
+
+    public function latestVersion(): HasOne
+    {
+        return $this->hasOne(BookingVersion::class)->latestOfMany('version');
+    }
+
+    /** At most one staged edit per booking per editor. */
+    public function drafts(): HasMany
+    {
+        return $this->hasMany(BookingDraft::class);
+    }
+
+    public function draft(): HasOne
+    {
+        return $this->hasOne(BookingDraft::class)->latestOfMany();
     }
 
     public function documents(): HasMany
@@ -132,6 +220,38 @@ class Booking extends Model
     public function statusBadge(): string
     {
         return self::STATUS_BADGE[$this->status] ?? 'secondary';
+    }
+
+    public function agentStatusLabel(): string
+    {
+        return self::AGENT_STATUS[$this->status][0] ?? $this->statusLabel();
+    }
+
+    public function agentStatusBadge(): string
+    {
+        return self::AGENT_STATUS[$this->status][1] ?? 'secondary';
+    }
+
+    // Every DB status that rolls up into one agent-facing tab.
+    public static function statusesForTab(string $tab): array
+    {
+        $label = self::AGENT_TABS[$tab] ?? null;
+
+        return $label ? array_keys(array_filter(self::AGENT_STATUS, fn ($s) => $s[0] === $label)) : [];
+    }
+
+    public function needsRevision(): bool
+    {
+        return $this->status === 'needs_revision';
+    }
+
+    // A finished or dead booking is the only thing an agent may not touch. Everything
+    // else — including `confirmed` — can be edited and resubmitted for re-verification.
+    const AGENT_LOCKED_STATUSES = ['completed', 'cancelled', 'rejected', 'refunded'];
+
+    public function isEditableByAgent(): bool
+    {
+        return ! in_array($this->status, self::AGENT_LOCKED_STATUSES);
     }
 
     public function balance(): float

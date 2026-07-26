@@ -4,6 +4,9 @@ namespace App\Http\Controllers\Manage;
 
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
+use App\Models\BookingAmendment;
+use App\Models\BookingRevisionRequest;
+use App\Models\BookingVersion;
 use App\Models\Customer;
 use App\Models\Package;
 use App\Models\Payment;
@@ -33,6 +36,7 @@ class BookingController extends Controller
 
         $counts = [
             'pending_verification'          => Booking::where('status', 'pending_verification')->count(),
+            'needs_revision'                => Booking::where('status', 'needs_revision')->count(),
             'waiting_provider_confirmation' => Booking::where('status', 'waiting_provider_confirmation')->count(),
             'confirmed'                     => Booking::where('status', 'confirmed')->count(),
         ];
@@ -56,7 +60,15 @@ class BookingController extends Controller
 
     public function show(Booking $booking)
     {
-        $booking->load('package', 'customer', 'agent', 'provider', 'packageDate', 'pricing', 'pax', 'rooms', 'timeline.user', 'documents', 'payments', 'refunds');
+        $booking->load([
+            'package', 'customer', 'agent', 'provider', 'packageDate', 'pricing', 'pax', 'rooms',
+            'timeline.user', 'timeline.version:id,version', 'documents', 'payments', 'refunds',
+            'openRevisionRequest.requester', 'amendments.requester', 'amendments.reviewer', 'amendments.packageDate',
+            // The history panel lists versions — it must not drag two JSON blobs per row,
+            // and the author name must be eager-loaded or it is one query per version.
+            'versions' => fn ($q) => $q->select('id', 'booking_id', 'version', 'reason', 'created_by', 'created_at')
+                ->with('author:id,name'),
+        ]);
 
         return view('manage.bookings.show', compact('booking'));
     }
@@ -75,6 +87,47 @@ class BookingController extends Controller
         $this->bookings->confirm($booking, $request->user());
 
         return back()->with('ok', 'Booking confirmed. Invoice & travel voucher generated.');
+    }
+
+    public function version(Booking $booking, BookingVersion $version)
+    {
+        abort_unless($version->booking_id === $booking->id, 404);
+        $version->load('author', 'revisionRequest.requester');
+
+        return view('manage.bookings.version', compact('booking', 'version'));
+    }
+
+    public function approveAmendment(Booking $booking, BookingAmendment $amendment, Request $request)
+    {
+        abort_unless($amendment->booking_id === $booking->id, 404);
+        $data = $request->validate(['admin_note' => ['nullable', 'string', 'max:500']]);
+
+        $this->bookings->approveAmendment($amendment, $request->user(), $data['admin_note'] ?? null);
+
+        return back()->with('ok', 'Amendment approved and applied.');
+    }
+
+    public function rejectAmendment(Booking $booking, BookingAmendment $amendment, Request $request)
+    {
+        abort_unless($amendment->booking_id === $booking->id, 404);
+        $data = $request->validate(['admin_note' => ['nullable', 'string', 'max:500']]);
+
+        $this->bookings->rejectAmendment($amendment, $request->user(), $data['admin_note'] ?? null);
+
+        return back()->with('ok', 'Amendment rejected.');
+    }
+
+    public function requestRevision(Booking $booking, Request $request)
+    {
+        $data = $request->validate([
+            'remark'   => ['required', 'string', 'max:1000'],
+            'fields'   => ['required', 'array', 'min:1'],
+            'fields.*' => ['string', 'in:' . implode(',', array_keys(BookingRevisionRequest::FIELDS))],
+        ]);
+
+        $this->bookings->requestRevision($booking, $request->user(), $data['remark'], $data['fields']);
+
+        return back()->with('ok', 'Sent back to the agent for revision.');
     }
 
     public function reject(Booking $booking, Request $request)
@@ -163,6 +216,8 @@ class BookingController extends Controller
             'agent_id'           => ['nullable', 'exists:users,id'],
             'type'               => ['required', 'in:' . implode(',', array_keys(Booking::TYPES))],
             'travel_date'        => ['nullable', 'date'],
+            'pickup_location'    => ['nullable', 'string', 'max:255'],
+            'arrival_time'       => ['nullable', 'date_format:H:i'],
             // Pax now live on the room lines; these stay for the customer portal + API callers.
             'adults'             => ['nullable', 'integer', 'min:0'],
             'children'           => ['nullable', 'integer', 'min:0'],

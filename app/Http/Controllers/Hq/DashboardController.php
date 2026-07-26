@@ -44,6 +44,8 @@ class DashboardController extends Controller
 
         $attention = [
             ['Bookings to verify', Booking::where('status', 'pending_verification')->count(), route('manage.bookings.index', ['status' => 'pending_verification'])],
+            // Deliberately NOT in the "Pending Bookings" KPI above — these wait on the agent, not on us.
+            ['Bookings with agent for revision', Booking::where('status', 'needs_revision')->count(), route('manage.bookings.index', ['status' => 'needs_revision'])],
             ['Payments to verify', Payment::where('status', 'pending')->count(), route('manage.payments.index')],
             ['Awaiting provider', Booking::where('status', 'waiting_provider_confirmation')->count(), route('manage.bookings.index', ['status' => 'waiting_provider_confirmation'])],
             ['Commissions pending approval', Commission::where('status', 'pending')->count(), route('manage.commission.index')],

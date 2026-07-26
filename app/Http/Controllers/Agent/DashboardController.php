@@ -75,6 +75,8 @@ class DashboardController extends Controller
         ];
 
         $attention = [
+            // Waits on the agent, not on staff — counted separately from everything else.
+            'revision' => Booking::where('agent_id', $user->id)->where('status', 'needs_revision')->count(),
             'awaiting' => Booking::where('agent_id', $user->id)->where('status', 'waiting_provider_confirmation')->count(),
             'unpaid'   => Booking::where('agent_id', $user->id)->whereIn('status', ['confirmed', 'pending_verification'])
                             ->whereColumn('paid_amount', '<', 'total_amount')->count(),

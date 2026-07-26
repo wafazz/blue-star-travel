@@ -113,6 +113,20 @@ Route::middleware(['auth', 'role:agent'])->prefix('agent')->name('agent.')->grou
     Route::get('/bookings/{booking}', [AgentBooking::class, 'show'])->name('bookings.show');
     Route::post('/bookings/{booking}/payment', [AgentBooking::class, 'uploadPayment'])->name('bookings.payment');
 
+    // Revision loop — editable in `draft` + `needs_revision` only (Planning §13.8 Q1).
+    Route::get('/bookings/{booking}/edit', [AgentBooking::class, 'edit'])->name('bookings.edit');
+    Route::post('/bookings/{booking}/draft', [AgentBooking::class, 'saveDraft'])->name('bookings.draft');
+    Route::delete('/bookings/{booking}/draft', [AgentBooking::class, 'discardDraft'])->name('bookings.draft.discard');
+    Route::get('/bookings/{booking}/draft-slip', [AgentBooking::class, 'draftSlip'])->name('bookings.draft-slip');
+    // POST stages then redirects to the GET, so refreshing the diff never re-posts the form.
+    Route::post('/bookings/{booking}/review', [AgentBooking::class, 'stageForReview'])->name('bookings.review');
+    Route::get('/bookings/{booking}/review', [AgentBooking::class, 'review'])->name('bookings.review.show');
+    Route::get('/bookings/{booking}/confirm', [AgentBooking::class, 'confirm'])->name('bookings.confirm');
+    Route::post('/bookings/{booking}/resubmit', [AgentBooking::class, 'resubmit'])->name('bookings.resubmit');
+    Route::get('/bookings/{booking}/submitted', [AgentBooking::class, 'submitted'])->name('bookings.submitted');
+    // Confirmed bookings are never edited in place — the agent asks, HQ approves.
+    Route::post('/bookings/{booking}/amendment', [AgentBooking::class, 'requestAmendment'])->name('bookings.amendment');
+
     // Wallet / commission / network
     Route::get('/wallet', [AgentWallet::class, 'index'])->name('wallet.index');
     Route::post('/wallet/withdraw', [AgentWallet::class, 'withdraw'])->name('wallet.withdraw');
@@ -212,6 +226,11 @@ Route::middleware(['auth', 'role:super_admin,hq,admin'])->group(function () {
         Route::get('bookings/{booking}', [ManageBooking::class, 'show'])->name('bookings.show');
         Route::post('bookings/{booking}/submit', [ManageBooking::class, 'submitToProvider'])->name('bookings.submit');
         Route::post('bookings/{booking}/confirm', [ManageBooking::class, 'confirm'])->name('bookings.confirm');
+        Route::post('bookings/{booking}/revision', [ManageBooking::class, 'requestRevision'])->name('bookings.revision');
+        // Name stays under `bookings.` — EnsurePermission maps the section off that segment.
+        Route::get('bookings/{booking}/versions/{version}', [ManageBooking::class, 'version'])->name('bookings.versions.show');
+        Route::post('bookings/{booking}/amendments/{amendment}/approve', [ManageBooking::class, 'approveAmendment'])->name('bookings.amendments.approve');
+        Route::post('bookings/{booking}/amendments/{amendment}/reject', [ManageBooking::class, 'rejectAmendment'])->name('bookings.amendments.reject');
         Route::post('bookings/{booking}/reject', [ManageBooking::class, 'reject'])->name('bookings.reject');
         Route::post('bookings/{booking}/complete', [ManageBooking::class, 'complete'])->name('bookings.complete');
         Route::post('bookings/{booking}/cancel', [ManageBooking::class, 'cancel'])->name('bookings.cancel');

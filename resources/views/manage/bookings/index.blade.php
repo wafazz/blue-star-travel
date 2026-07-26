@@ -5,22 +5,27 @@
 
 @section('content')
   <div class="row g-3 mb-3">
-    <div class="col-6 col-lg-3">
+    <div class="col-6 col-lg">
       <a href="{{ route('manage.bookings.index', ['status' => 'pending_verification']) }}" class="text-decoration-none">
         <div class="card p-3"><div class="fs-4 fw-bold text-info">{{ $counts['pending_verification'] }}</div><div class="text-secondary small">Pending Verification</div></div>
       </a>
     </div>
-    <div class="col-6 col-lg-3">
+    <div class="col-6 col-lg">
+      <a href="{{ route('manage.bookings.index', ['status' => 'needs_revision']) }}" class="text-decoration-none">
+        <div class="card p-3"><div class="fs-4 fw-bold text-warning">{{ $counts['needs_revision'] }}</div><div class="text-secondary small">Needs Revision</div></div>
+      </a>
+    </div>
+    <div class="col-6 col-lg">
       <a href="{{ route('manage.bookings.index', ['status' => 'waiting_provider_confirmation']) }}" class="text-decoration-none">
         <div class="card p-3"><div class="fs-4 fw-bold text-primary">{{ $counts['waiting_provider_confirmation'] }}</div><div class="text-secondary small">Waiting Provider</div></div>
       </a>
     </div>
-    <div class="col-6 col-lg-3">
+    <div class="col-6 col-lg">
       <a href="{{ route('manage.bookings.index', ['status' => 'confirmed']) }}" class="text-decoration-none">
         <div class="card p-3"><div class="fs-4 fw-bold text-success">{{ $counts['confirmed'] }}</div><div class="text-secondary small">Confirmed</div></div>
       </a>
     </div>
-    <div class="col-6 col-lg-3">
+    <div class="col-6 col-lg">
       <a href="{{ route('manage.bookings.index') }}" class="text-decoration-none">
         <div class="card p-3"><div class="fs-4 fw-bold">All</div><div class="text-secondary small">Clear filters</div></div>
       </a>

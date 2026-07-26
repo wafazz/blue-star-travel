@@ -261,9 +261,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
         </div>
       </div>
 
-      @if ($attention['unpaid'] || $attention['awaiting'])
+      @if ($attention['unpaid'] || $attention['awaiting'] || $attention['revision'])
       <div class="sec">
         <div class="sec-h"><h3>Needs Your Attention</h3></div>
+        @if ($attention['revision'])
+        <div class="lrow" onclick="location.href='{{ route('agent.bookings.index', ['tab' => 'needs_revision']) }}'">
+          <div class="ic i-orange">📝</div>
+          <div class="tx"><b>{{ $attention['revision'] }} booking(s) need revision</b><span>Admin asked you to correct these</span></div>
+          <div class="arw">›</div>
+        </div>
+        @endif
         @if ($attention['unpaid'])
         <div class="lrow" onclick="location.href='{{ route('agent.bookings.index') }}'">
           <div class="ic i-orange">💳</div>
@@ -272,7 +279,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
         </div>
         @endif
         @if ($attention['awaiting'])
-        <div class="lrow" onclick="location.href='{{ route('agent.bookings.index', ['status' => 'waiting_provider_confirmation']) }}'">
+        <div class="lrow" onclick="location.href='{{ route('agent.bookings.index', ['tab' => 'submitted']) }}'">
           <div class="ic i-blue">⏳</div>
           <div class="tx"><b>{{ $attention['awaiting'] }} booking(s) awaiting confirmation</b><span>Provider response pending</span></div>
           <div class="arw">›</div>

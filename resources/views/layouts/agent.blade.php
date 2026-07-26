@@ -32,7 +32,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
   font-family:inherit;color:var(--ink);background:#fff;margin-bottom:12px}
 .inp:focus{outline:none;border-color:var(--blue)}
 .row2{display:flex;gap:10px}.row2>*{flex:1}
+/* text-align + text-decoration matter because .btn is used on <a> as well as <button>:
+   without them an anchor button renders left-aligned and underlined. */
 .btn{display:block;width:100%;border:none;border-radius:14px;padding:14px;font-size:15px;font-weight:800;
+  text-align:center;text-decoration:none;
   background:linear-gradient(135deg,#1466ff,#0b3fd1);color:#fff;cursor:pointer;box-shadow:0 10px 24px rgba(20,102,255,.32)}
 .btn:active{transform:scale(.98)}
 .btn.ghost{background:#eef2fb;color:var(--muted);box-shadow:none}
@@ -46,10 +49,20 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .b-danger{background:#fdeaea;color:#d13b3b}.b-secondary{background:#eef1f8;color:#7a86a8}.b-dark{background:#e0e4ee;color:#0d1b3e}
 .sum{display:flex;justify-content:space-between;font-size:13px;margin-bottom:7px}
 .sum.total{font-size:18px;font-weight:800;color:var(--blue);border-top:1px solid var(--line);padding-top:10px;margin-top:4px}
-.seg{display:flex;gap:7px;overflow-x:auto;padding:14px 16px 4px}
-.seg a{white-space:nowrap;text-decoration:none;font-size:12px;font-weight:700;padding:7px 14px;border-radius:20px;
-  background:#fff;color:var(--muted);box-shadow:var(--shadow)}
+/* Six status chips never fit a phone width, so this is a scroll strip on purpose:
+   scrollbar hidden, chips keep their full size (flex:0 0 auto — without it they squash
+   into unreadable slivers), and a trailing spacer keeps the last chip off the edge.
+   The partially-visible next chip is the affordance; the active one is scrolled into
+   view on load so a deep-linked tab is never hidden off-screen. */
+.seg{display:flex;gap:7px;overflow-x:auto;padding:14px 16px 4px;scrollbar-width:none;
+  -webkit-overflow-scrolling:touch;scroll-snap-type:x proximity}
+.seg::-webkit-scrollbar{display:none}
+.seg::after{content:'';flex:0 0 4px}
+.seg a{flex:0 0 auto;scroll-snap-align:start;white-space:nowrap;text-decoration:none;font-size:12px;font-weight:700;
+  padding:7px 14px;border-radius:20px;background:#fff;color:var(--muted);box-shadow:var(--shadow)}
 .seg a.on{background:linear-gradient(135deg,#1466ff,#0b3fd1);color:#fff}
+.pax-step{flex:0 0 34px;height:34px;border:none;border-radius:10px;background:#eef2fb;color:var(--blue);
+  font-size:17px;font-weight:800;line-height:1;cursor:pointer}
 .empty{text-align:center;color:var(--muted);font-size:13px;padding:40px 20px;font-weight:600}
 .tl{list-style:none;padding:0;margin:0}
 .tl li{display:flex;gap:10px;padding-bottom:14px}
@@ -70,11 +83,22 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
   </div>
   <div class="nav">
     <a href="{{ route('agent.dashboard') }}" class="{{ request()->routeIs('agent.dashboard') ? 'on' : '' }}"><span class="ic">🏠</span>Home</a>
+    <a href="{{ route('agent.customers.index') }}" class="{{ request()->routeIs('agent.customers.*') ? 'on' : '' }}"><span class="ic">👥</span>Customers</a>
     <a href="{{ route('agent.bookings.index') }}" class="{{ request()->routeIs('agent.bookings.*') ? 'on' : '' }}"><span class="ic">📋</span>Bookings</a>
     <a href="{{ route('agent.bookings.create') }}"><span class="ic">➕</span>New</a>
     <a href="{{ route('agent.wallet.index') }}" class="{{ request()->routeIs('agent.wallet.*') ? 'on' : '' }}"><span class="ic">💰</span>Wallet</a>
     <a href="{{ route('agent.network') }}" class="{{ request()->routeIs('agent.network') ? 'on' : '' }}"><span class="ic">🌐</span>Network</a>
   </div>
 </div>
+<script>
+  // A deep-linked tab (e.g. ?tab=cancelled) sits past the right edge of the strip —
+  // bring the active chip into view so the agent can see which filter is applied.
+  document.querySelectorAll('.seg a.on').forEach(function (chip) {
+    var strip = chip.parentElement;
+    if (strip.scrollWidth > strip.clientWidth) {
+      strip.scrollLeft = chip.offsetLeft - strip.offsetLeft - 16;
+    }
+  });
+</script>
 </body>
 </html>
