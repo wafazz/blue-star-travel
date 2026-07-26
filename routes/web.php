@@ -107,6 +107,8 @@ Route::middleware(['auth', 'role:agent'])->prefix('agent')->name('agent.')->grou
     Route::get('/customers/{customer}/edit', [AgentCustomer::class, 'edit'])->name('customers.edit');
     Route::put('/customers/{customer}', [AgentCustomer::class, 'update'])->name('customers.update');
 
+    // Its own path, not /bookings/upcoming — that would be captured by {booking}.
+    Route::get('/upcoming', [AgentBooking::class, 'upcoming'])->name('upcoming');
     Route::get('/bookings', [AgentBooking::class, 'index'])->name('bookings.index');
     Route::get('/bookings/create', [AgentBooking::class, 'create'])->name('bookings.create');
     Route::post('/bookings', [AgentBooking::class, 'store'])->name('bookings.store');

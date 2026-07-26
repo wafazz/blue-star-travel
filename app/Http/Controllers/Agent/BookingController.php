@@ -44,6 +44,48 @@ class BookingController extends Controller
         return view('agent.bookings.index', compact('bookings'));
     }
 
+    /**
+     * Upcoming trips, grouped by whichever date the agent is sorting on. "Upcoming" is
+     * always about the arrival date; the toggle only changes what the list is ordered
+     * and grouped by, exactly like the client's reference.
+     */
+    public function upcoming(Request $request)
+    {
+        $by = $request->input('by') === 'reservation' ? 'reservation' : 'arrival';
+
+        $query = Booking::query()
+            ->with('package', 'customer', 'packageDate')
+            ->where('agent_id', $request->user()->id)
+            // A cancelled or finished trip is not upcoming.
+            ->whereNotIn('status', ['cancelled', 'rejected', 'refunded', 'completed'])
+            // An open-dated booking has no departure row, so fall back to travel_date.
+            ->where(function ($w) {
+                $w->whereHas('packageDate', fn ($d) => $d->whereDate('depart_date', '>=', today()))
+                    ->orWhere(fn ($q) => $q->doesntHave('packageDate')->whereDate('travel_date', '>=', today()));
+            });
+
+        if ($search = trim((string) $request->input('q'))) {
+            $query->where(function ($w) use ($search) {
+                $w->where('booking_no', 'like', "%{$search}%")
+                    ->orWhereHas('customer', fn ($c) => $c->where('name', 'like', "%{$search}%")
+                        ->orWhere('phone', 'like', "%{$search}%"))
+                    ->orWhereHas('package', fn ($p) => $p->where('title', 'like', "%{$search}%"));
+            });
+        }
+
+        $bookings = $by === 'reservation'
+            ? $query->orderByDesc('created_at')->get()
+            // Arrival order can't be done in SQL alone — it lives on two columns — so the
+            // list is sorted in PHP. Fine here: it is one agent's upcoming trips, not a feed.
+            : $query->get()->sortBy(fn ($b) => $b->arrivalDate())->values();
+
+        $groups = $bookings->groupBy(fn ($b) => optional(
+            $by === 'reservation' ? $b->created_at : $b->arrivalDate()
+        )->format('l, j F Y') ?? 'No date yet');
+
+        return view('agent.bookings.upcoming', compact('groups', 'bookings', 'by'));
+    }
+
     public function create(Request $request)
     {
         return view('agent.bookings.form', [

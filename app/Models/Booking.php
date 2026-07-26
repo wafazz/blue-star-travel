@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Carbon;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
@@ -252,6 +253,45 @@ class Booking extends Model
     public function isEditableByAgent(): bool
     {
         return ! in_array($this->status, self::AGENT_LOCKED_STATUSES);
+    }
+
+    /** When the trip starts. A chosen departure wins; an open-dated booking uses travel_date. */
+    public function arrivalDate(): ?Carbon
+    {
+        return $this->packageDate?->depart_date ?? $this->travel_date;
+    }
+
+    public function returnDate(): ?Carbon
+    {
+        if ($this->packageDate?->return_date) {
+            return $this->packageDate->return_date;
+        }
+
+        $nights = (int) ($this->package?->duration_nights ?? 0);
+
+        return $nights > 0 ? $this->arrivalDate()?->copy()->addDays($nights) : null;
+    }
+
+    public function nights(): int
+    {
+        $from = $this->arrivalDate();
+        $to = $this->returnDate();
+
+        return $from && $to ? (int) $from->diffInDays($to) : (int) ($this->package?->duration_nights ?? 0);
+    }
+
+    /** "3 adults, 2 children" — zero counts are omitted. */
+    public function paxSummary(): string
+    {
+        $parts = [];
+        foreach (['adults' => 'adult', 'children' => 'child', 'seniors' => 'senior', 'infants' => 'infant'] as $field => $noun) {
+            $n = (int) $this->{$field};
+            if ($n > 0) {
+                $parts[] = $n . ' ' . ($n === 1 ? $noun : ($noun === 'child' ? 'children' : $noun . 's'));
+            }
+        }
+
+        return $parts ? implode(', ', $parts) : '—';
     }
 
     public function balance(): float

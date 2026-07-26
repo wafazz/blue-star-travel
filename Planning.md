@@ -610,6 +610,30 @@ the name/phone requirement and the cross-agent 403. Suite → **107 passing**.
    re-dispatching a real DOM `change` on `select2:select` / `select2:clear`. Verified in Chrome.
    Room-type selects are built after load, so `_rooms-js` calls `initSelect2(row)` per new row.
 
+### 13.9f Upcoming trips screen (2026-07-26)
+
+From a second client reference (a hotel-booking app). **Added as its own screen, not a
+replacement** — "My Customers" keeps the View/Edit buttons, status badges and Status Guide from
+the approved mockup. Route `agent.upcoming` at `/agent/upcoming` (**not** `/bookings/upcoming`,
+which `{booking}` would capture), new nav item. Suite → **117 passing**.
+
+Card shows exactly what was asked: customer name · arrival–return dates · nights · pax · package.
+Plus the status badge, since an agent needs to know a trip is still unverified.
+
+- **Arrival ⇄ Reservation toggle** changes only the sort *and* the date-group heading. The list is
+  always upcoming trips either way — "upcoming" is a property of the arrival date, not the sort.
+- **Upcoming** = arrival ≥ today, excluding `cancelled` / `rejected` / `refunded` / `completed`.
+- Arrival sorting happens **in PHP**, because the arrival date lives on two columns
+  (`package_dates.depart_date` or `travel_date` for open-dated bookings) and can't be ordered in
+  SQL alone. Acceptable here — it's one agent's upcoming trips, not a feed. Revisit if an agent
+  ever carries thousands.
+- New `Booking` helpers so the view stays dumb: `arrivalDate()`, `returnDate()`, `nights()`,
+  `paxSummary()`. Nights come from the departure's return date, falling back to
+  `packages.duration_nights`; `paxSummary()` renders "3 adults, 2 children" and doesn't pluralise a
+  single traveller.
+- **Open-dated bookings have no departure row**, so the query needs the `doesntHave('packageDate')`
+  branch or they'd vanish from the list entirely. Covered by a test.
+
 ### 13.10 Factory assignment
 
 | Phase | Lead | Builders | Quality gate |

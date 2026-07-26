@@ -88,6 +88,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
     <a href="{{ route('agent.dashboard') }}" class="{{ request()->routeIs('agent.dashboard') ? 'on' : '' }}"><span class="ic">🏠</span>Home</a>
     <a href="{{ route('agent.customers.index') }}" class="{{ request()->routeIs('agent.customers.*') ? 'on' : '' }}"><span class="ic">👥</span>Customers</a>
     <a href="{{ route('agent.bookings.index') }}" class="{{ request()->routeIs('agent.bookings.*') ? 'on' : '' }}"><span class="ic">📋</span>Bookings</a>
+    <a href="{{ route('agent.upcoming') }}" class="{{ request()->routeIs('agent.upcoming') ? 'on' : '' }}"><span class="ic">📆</span>Upcoming</a>
     <a href="{{ route('agent.bookings.create') }}"><span class="ic">➕</span>New</a>
     <a href="{{ route('agent.wallet.index') }}" class="{{ request()->routeIs('agent.wallet.*') ? 'on' : '' }}"><span class="ic">💰</span>Wallet</a>
     <a href="{{ route('agent.network') }}" class="{{ request()->routeIs('agent.network') ? 'on' : '' }}"><span class="ic">🌐</span>Network</a>
