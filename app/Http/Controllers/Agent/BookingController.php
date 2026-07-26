@@ -55,6 +55,13 @@ class BookingController extends Controller
 
     public function store(Request $request)
     {
+        // "➕ New customer…" posts a sentinel rather than "" so Select2 keeps it in the
+        // list. Normalise it away before validation — the rest of the method already
+        // treats an empty customer_id as "register the inline one".
+        if ($request->input('customer_id') === '__new') {
+            $request->merge(['customer_id' => null]);
+        }
+
         $data = $request->validate([
             'package_id'         => ['required', 'exists:packages,id'],
             'package_pricing_id' => ['nullable', 'exists:package_pricings,id'],

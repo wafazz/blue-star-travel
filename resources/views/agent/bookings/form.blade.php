@@ -9,7 +9,7 @@
 
   @if ($errors->any())<div class="alert err">{{ $errors->first() }}</div>@endif
 
-  <form method="POST" action="{{ route('agent.bookings.store') }}" class="wrap">
+  <form method="POST" action="{{ route('agent.bookings.store') }}" class="wrap" data-select2>
     @csrf
     <div class="card">
       <h3>Package</h3>
@@ -39,10 +39,13 @@
 
       @if ($customers->isNotEmpty())
         <label class="lbl">Select your customer</label>
+        {{-- The "new customer" entry carries a real sentinel value, not "". Select2 treats
+             every empty-value option as the placeholder and drops it from the list, which
+             hid this option completely. `__new` is normalised back to null in store(). --}}
         <select name="customer_id" id="customer_id" class="inp" onchange="toggleNewCustomer()">
           <option value="">Choose…</option>
           @foreach ($customers as $c)<option value="{{ $c->id }}" @selected(old('customer_id') == $c->id)>{{ $c->name }}</option>@endforeach
-          <option value="" data-new="1" @selected(old('new_customer_name'))>➕ New customer…</option>
+          <option value="__new" data-new="1" @selected(old('new_customer_name'))>➕ New customer…</option>
         </select>
       @else
         <div class="m" style="font-size:12px;margin-bottom:10px">You have no customers yet — fill in their details below and they'll be registered to you.</div>
@@ -92,7 +95,7 @@
     // With no customers the inline fields are the only way to name one, so they stay open.
     function toggleNewCustomer(){
       const sel = $('customer_id');
-      const on = !sel || !!sel.selectedOptions[0]?.dataset.new;
+      const on = !sel || sel.value === '__new' || !!sel.selectedOptions[0]?.dataset.new;
       $('newCustomer').style.display = on ? '' : 'none';
       $('new_customer_name').required = on;
       $('new_customer_phone').required = on;

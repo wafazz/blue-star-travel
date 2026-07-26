@@ -577,6 +577,39 @@ editing it directly (this rule) or via **Request Amendment** (Phase F). They beh
 the edit path takes the booking out of `confirmed`, the amendment path keeps it confirmed and moves
 seats between departures. Worth deciding which one survives before agents see both.
 
+### 13.9e Select2 on the agent booking form (2026-07-26)
+
+Every `<select>` on `/agent/bookings/create` is now a searchable Select2. Suite still **102 passing**.
+
+- **Bundled, not CDN.** The agent portal is an installed PWA and `public/sw.js` caches `/build/*`
+  cache-first but never HTML — a CDN would leave the form broken on a flaky mobile connection.
+  New entry `resources/js/agent.js` + `resources/scss/agent-select2.scss`, wired into
+  `vite.config.js` and `@vite`'d from `layouts/agent`. **The agent shell had no JS bundle at all
+  before this** (only `layouts/admin` used Vite), so this adds jQuery to that portal.
+- **jQuery pinned to 3.x.** `npm i jquery` installed 4.0, which drops APIs Select2 4.0.13 still uses.
+- **Opt-in per form:** a form carries `data-select2`; a field can opt out with `data-no-select2`.
+  Only the create form opts in — the edit form is unchanged.
+- `minimumResultsForSearch: 0` so the search box shows on short lists too (Select2 hides it by default).
+- Dropdown is parented to the field's own `.card`, or it escapes the fixed-width phone frame.
+
+**Select2 hid the "➕ New customer…" option — fixed.** That entry had `value=""`, and Select2
+treats *every* empty-value option as the placeholder and drops it from the list, so an agent
+could no longer register a customer from the booking form at all. It now posts the sentinel
+`__new`, which `store()` normalises back to `null` before validation (the existing
+"empty customer_id ⇒ register the inline one" branch then does the work). 5 tests in
+`AgentCreateBookingTest` cover the sentinel, the existing-customer path, the rendered option,
+the name/phone requirement and the cross-agent 403. Suite → **107 passing**.
+
+**Two traps hit, both worth remembering:**
+1. **Select2's CommonJS build does not self-register** — `module.exports` is a `(root, jQuery)`
+   factory, so `import 'select2'` leaves `$.fn.select2` undefined. It must be invoked:
+   `select2(window, $)`.
+2. **Select2 announces selections with jQuery's `trigger('change')`, which never reaches
+   `addEventListener` listeners** — and `fillPackage()` / `recalc()` are both bound that way, so
+   picking a package would have silently stopped loading departures, room rows and pricing. Fixed by
+   re-dispatching a real DOM `change` on `select2:select` / `select2:clear`. Verified in Chrome.
+   Room-type selects are built after load, so `_rooms-js` calls `initSelect2(row)` per new row.
+
 ### 13.10 Factory assignment
 
 | Phase | Lead | Builders | Quality gate |

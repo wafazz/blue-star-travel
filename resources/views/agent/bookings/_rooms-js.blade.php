@@ -83,6 +83,12 @@
       <div class="m room-note" style="font-size:11.5px"></div>`;
     $('roomRows').appendChild(row);
     row.querySelectorAll('select,input').forEach(el => el.addEventListener('input', recalc));
+    // Room rows are built after page load, so they miss the initial sweep. Select2 fires
+    // a native `change`, not `input`, so recalc has to be bound to that too.
+    if (window.initSelect2) {
+      window.initSelect2(row);
+      row.querySelectorAll('select').forEach(el => el.addEventListener('change', recalc));
+    }
     recalc();
   }
 

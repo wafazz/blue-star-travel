@@ -6,6 +6,9 @@
 <title>@yield('title', 'Agent') — Blue Travel</title>
 @include('partials.favicon')
 @include('partials.pwa', ['portal' => 'agent'])
+{{-- Bundled, not CDN: this portal is an installed PWA and the service worker only
+     caches local /build assets, so a CDN would break the form on a flaky connection. --}}
+@vite(['resources/js/agent.js'])
 <style>
 :root{
   --blue:#1466ff; --blue-2:#0b3fd1; --sky:#38bdf8; --ink:#0d1b3e; --muted:#7a86a8;
