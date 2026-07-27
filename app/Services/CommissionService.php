@@ -215,6 +215,8 @@ class CommissionService
             return [];
         }
 
+        // total_amount is the trip price; a forfeited deposit never enters it, so
+        // commission is on travel value automatically.
         $base = (float) $booking->total_amount;
 
         return $levels->map(fn ($lvl) => [

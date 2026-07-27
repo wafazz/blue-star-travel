@@ -214,7 +214,8 @@ class ResubmitRevisionTest extends TestCase
         $this->assertSame('Solo Traveller', $booking->pax()->first()->name);
     }
 
-    public function test_a_resubmit_that_drops_the_total_below_what_was_paid_is_blocked(): void
+    /** Superseded: dropping below what was paid used to be refused outright. */
+    public function test_a_resubmit_that_drops_the_total_below_what_was_paid_burns_and_leaves_credit(): void
     {
         $booking = $this->booking(['paid_amount' => 17000]);
 
@@ -223,12 +224,15 @@ class ResubmitRevisionTest extends TestCase
             'rooms' => [['package_pricing_id' => $this->quad->id, 'adults' => 1, 'children' => 0, 'seniors' => 0, 'infants' => 0]],
         ]);
 
-        $this->resubmit($booking)->assertSessionHasErrors('rooms');
+        $this->resubmit($booking)->assertRedirect();
 
         $booking->refresh();
-        $this->assertSame('needs_revision', $booking->status, 'A blocked resubmit must not move the booking.');
-        $this->assertSame(2, $booking->rooms()->first()->adults, 'Nothing may be applied when the guard trips.');
-        $this->assertSame(1, $booking->versions()->count());
+        $this->assertSame(1, $booking->rooms()->first()->adults);
+        // One cancelled pack at the house rate, taken out of the 17,000 already paid.
+        $this->assertSame(1, (int) $booking->forfeited_packs);
+        $this->assertEqualsWithDelta(8500.0, (float) $booking->total_amount, 0.01);
+        $this->assertEqualsWithDelta(16900.0, $booking->paidAfterForfeit(), 0.01);
+        $this->assertEqualsWithDelta(8400.0, $booking->refundableAmount(), 0.01);
     }
 
     public function test_a_changed_departure_is_re_checked_for_seats(): void

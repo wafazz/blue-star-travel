@@ -104,9 +104,11 @@ class BookingRevisionService
                 'slip_path'  => $payment?->slip_path,
             ],
             'money' => [
-                'subtotal'     => (string) $booking->subtotal,
-                'discount'     => (string) $booking->discount,
-                'total_amount' => (string) $booking->total_amount,
+                'subtotal'         => (string) $booking->subtotal,
+                'discount'         => (string) $booking->discount,
+                'forfeited_packs'  => (int) $booking->forfeited_packs,
+                'forfeited_amount' => (string) $booking->forfeited_amount,
+                'total_amount'     => (string) $booking->total_amount,
             ],
         ];
     }
@@ -201,6 +203,18 @@ class BookingRevisionService
         $subtotal = round(array_sum(array_column($lines, 'subtotal')), 2);
 
         return ['lines' => $lines, 'subtotal' => $subtotal, 'total' => $subtotal];
+    }
+
+    /**
+     * Chargeable packs a staged payload would leave on the booking. Read off the room
+     * lines, not `pax`, because the room table is what the pricing and the seat count
+     * are derived from. Infants are not packs.
+     */
+    public function packsInPayload(array $payload): int
+    {
+        return (int) collect(data_get($payload, 'rooms', []))->sum(
+            fn ($r) => (int) ($r['adults'] ?? 0) + (int) ($r['children'] ?? 0) + (int) ($r['seniors'] ?? 0)
+        );
     }
 
     /**
@@ -359,6 +373,8 @@ class BookingRevisionService
                 $priced['lines']
             )),
             'subtotal'     => $priced['subtotal'],
+            // Trip price only. The penalty is taken out of paid_amount, not added here —
+            // see Booking::balance().
             'total_amount' => max(0, $priced['total'] - (float) $booking->discount),
         ]);
 

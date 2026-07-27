@@ -57,7 +57,13 @@
       <h3>Payment</h3>
       <div class="sum"><span style="color:var(--muted)">Total</span><span style="font-weight:800">RM {{ number_format($booking->total_amount, 2) }}</span></div>
       <div class="sum"><span style="color:var(--muted)">Paid</span><span style="font-weight:700;color:var(--ok)">RM {{ number_format($booking->paid_amount, 2) }}</span></div>
-      <div class="sum total" style="font-size:15px"><span>Balance</span><span style="color:{{ $booking->balance() > 0 ? 'var(--danger)' : 'var(--ok)' }}">RM {{ number_format($booking->balance(), 2) }}</span></div>
+      @if ($booking->forfeited_amount > 0)
+        <div class="sum"><span style="color:var(--muted)">Cancellation charge ({{ $booking->forfeited_packs }} pack)</span><span style="font-weight:700;color:var(--danger)">− RM {{ number_format($booking->forfeited_amount, 2) }}</span></div>
+      @endif
+      <div class="sum total" style="font-size:15px"><span>Balance</span><span style="color:{{ $booking->balance() > 0 ? 'var(--danger)' : 'var(--ok)' }}">RM {{ number_format(max(0, $booking->balance()), 2) }}</span></div>
+      @if ($booking->refundableAmount() > 0)
+        <div class="sum"><span style="color:var(--muted)">Refundable</span><span style="font-weight:700;color:var(--ok)">RM {{ number_format($booking->refundableAmount(), 2) }}</span></div>
+      @endif
 
       @if ($booking->balance() > 0 && ! in_array($booking->status, ['cancelled', 'rejected']))
         <form method="POST" action="{{ route('gateway.initiate', $booking) }}" style="margin-top:12px">
@@ -154,6 +160,34 @@
         @elseif ($booking->openAmendment)
           <div class="m" style="font-size:11.5px">An amendment is already awaiting HQ review — you'll be notified when it's decided.</div>
         @endif
+      </div>
+    @endif
+
+    @if ($booking->isCancellableByAgent())
+      <div class="card" style="border:1px solid var(--danger)">
+        <h3 style="color:var(--danger)">Cancel Booking</h3>
+        @if ($booking->chargeablePacks() > 0 && $booking->paid_amount > 0)
+          <div class="sum"><span style="color:var(--muted)">Packs to cancel</span><span style="font-weight:700">{{ $booking->chargeablePacks() }}</span></div>
+          <div class="sum"><span style="color:var(--muted)">Rate per pack</span><span style="font-weight:700">RM {{ number_format($booking->package?->cancellationFeePerPack() ?? 0, 2) }}</span></div>
+          <div class="sum total"><span>Will be forfeited</span><span style="color:var(--danger)">RM {{ number_format($booking->chargeablePacks() * ($booking->package?->cancellationFeePerPack() ?? 0), 2) }}</span></div>
+          <div class="m" style="font-size:11.5px;line-height:1.6;margin-top:6px">
+            This is deducted from the RM {{ number_format($booking->paid_amount, 2) }} already paid.
+            <strong>HQ processes any refund</strong> — you cannot pay money back from here.
+          </div>
+        @else
+          <div class="m" style="font-size:11.5px;line-height:1.6">
+            Nothing has been paid on this booking, so cancelling it costs the customer nothing.
+          </div>
+        @endif
+
+        <form method="POST" action="{{ route('agent.bookings.cancel', $booking) }}" style="margin-top:12px">
+          @csrf
+          <label class="lbl">Reason <span style="color:var(--danger)">*</span></label>
+          <textarea name="reason" rows="2" class="inp" required placeholder="Why is the customer cancelling?"></textarea>
+          <label class="lbl">Type <strong>CANCEL</strong> to confirm</label>
+          <input type="text" name="confirm" class="inp" placeholder="CANCEL" autocomplete="off" required>
+          <button class="btn" style="background:var(--danger)">Cancel This Booking</button>
+        </form>
       </div>
     @endif
 

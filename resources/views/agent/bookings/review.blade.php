@@ -41,14 +41,38 @@
       <div class="card"><div class="empty">Nothing has changed yet.<br>Go back and edit the booking first.</div></div>
     @endforelse
 
+    @if ($forfeit['packs'] > 0)
+      <div class="card" style="border:1px solid var(--danger)">
+        <h3 style="color:var(--danger)">⚠️ Cancellation Charge</h3>
+        <div class="sum"><span style="color:var(--muted)">Packs cancelled</span><span style="font-weight:700">{{ $forfeit['packs'] }}</span></div>
+        <div class="sum"><span style="color:var(--muted)">Rate per pack</span><span style="font-weight:700">RM {{ number_format($forfeit['rate'], 2) }}</span></div>
+        <div class="sum total"><span>Deposit forfeited</span><span style="color:var(--danger)">RM {{ number_format($forfeit['amount'], 2) }}</span></div>
+        <div class="m" style="font-size:11.5px;line-height:1.6;margin-top:6px">
+          {{ $forfeit['packs'] }} pack(s) removed × RM {{ number_format($forfeit['rate'], 2) }} is
+          <strong>taken out of what the customer has already paid</strong> and is not refundable.
+          Infants are not charged. Tell the customer before you submit.
+        </div>
+      </div>
+    @endif
+
     <div class="card">
       <h3>Totals</h3>
-      <div class="sum"><span style="color:var(--muted)">Current total</span><span style="font-weight:700">RM {{ number_format($booking->total_amount, 2) }}</span></div>
-      <div class="sum"><span style="color:var(--muted)">Already paid</span><span style="font-weight:700">RM {{ number_format($booking->paid_amount, 2) }}</span></div>
-      <div class="sum total"><span>New total</span><span>RM {{ number_format($newTotal, 2) }}</span></div>
-      @if ($newTotal < (float) $booking->paid_amount)
-        <div class="m" style="font-size:11.5px;color:var(--danger);margin-top:6px">
-          This is below what has already been paid — a refund has to be raised before this can be resubmitted.
+      <div class="sum"><span style="color:var(--muted)">Current trip total</span><span style="font-weight:700">RM {{ number_format($booking->total_amount, 2) }}</span></div>
+      <div class="sum total"><span>New trip total</span><span>RM {{ number_format($newTotal, 2) }}</span></div>
+      <div class="sum" style="margin-top:8px"><span style="color:var(--muted)">Already paid</span><span style="font-weight:700;color:var(--ok)">RM {{ number_format($booking->paid_amount, 2) }}</span></div>
+      @if ($booking->forfeited_amount > 0)
+        <div class="sum"><span style="color:var(--muted)">Forfeited earlier</span><span style="font-weight:700;color:var(--danger)">− RM {{ number_format($booking->forfeited_amount, 2) }}</span></div>
+      @endif
+      @if ($forfeit['amount'] > 0)
+        <div class="sum"><span style="color:var(--muted)">Cancellation charge ({{ $forfeit['packs'] }} pack)</span><span style="font-weight:700;color:var(--danger)">− RM {{ number_format($forfeit['amount'], 2) }}</span></div>
+      @endif
+      @if ($newBalance >= 0)
+        <div class="sum total"><span>Balance to pay</span><span>RM {{ number_format($newBalance, 2) }}</span></div>
+      @else
+        <div class="sum total"><span>Refundable</span><span style="color:var(--ok)">RM {{ number_format(abs($newBalance), 2) }}</span></div>
+        <div class="m" style="font-size:11.5px;color:var(--ok);margin-top:6px">
+          After the charge the customer has paid more than the trip now costs. The office will
+          refund this or carry it forward — it is not paid back automatically.
         </div>
       @endif
       <div class="m" style="font-size:11.5px;margin-top:6px">Pricing is re-checked against today's rates when you submit.</div>

@@ -32,6 +32,15 @@ class Package extends Model
         'both'  => 'Both — departure or own date',
     ];
 
+    /** Deposit burnt per cancelled pack when a paid booking is reduced. */
+    const DEFAULT_CANCELLATION_FEE = 100;
+
+    /** Null means "use the house rate"; an explicit 0 waives the penalty for this package. */
+    public function cancellationFeePerPack(): float
+    {
+        return (float) ($this->cancellation_fee_per_pack ?? self::DEFAULT_CANCELLATION_FEE);
+    }
+
     /** Departures must be published and a booking must pick one. */
     public function requiresDeparture(): bool
     {

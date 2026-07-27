@@ -113,7 +113,13 @@
           <tr><td class="muted">Discount</td><td class="right">- RM {{ number_format($booking->discount, 2) }}</td></tr>
           <tr><td class="grand" style="border-top:1px solid #ddd">Total</td><td class="right grand" style="border-top:1px solid #ddd">RM {{ number_format($booking->total_amount, 2) }}</td></tr>
           <tr><td class="muted">Paid</td><td class="right">RM {{ number_format($booking->paid_amount, 2) }}</td></tr>
-          <tr><td class="muted">Balance</td><td class="right"><strong>RM {{ number_format($booking->balance(), 2) }}</strong></td></tr>
+          @if ($booking->forfeited_amount > 0)
+            <tr><td class="muted">Cancellation charge ({{ $booking->forfeited_packs }} pack)</td><td class="right">- RM {{ number_format($booking->forfeited_amount, 2) }}</td></tr>
+          @endif
+          <tr><td class="muted">Balance</td><td class="right"><strong>RM {{ number_format(max(0, $booking->balance()), 2) }}</strong></td></tr>
+          @if ($booking->refundableAmount() > 0)
+            <tr><td class="muted">Refundable</td><td class="right"><strong>RM {{ number_format($booking->refundableAmount(), 2) }}</strong></td></tr>
+          @endif
         </table>
       </td>
     </tr>

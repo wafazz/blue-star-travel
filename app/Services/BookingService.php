@@ -409,6 +409,16 @@ class BookingService
             $payload = $draft->payload;
             $this->assertResubmittable($locked, $payload);
 
+            // Bank this edit's penalty BEFORE apply() re-prices — apply() reads the
+            // accrued figure off the booking to build the new total.
+            $burn = $this->forfeiture($locked, $payload);
+            if ($burn['packs'] > 0) {
+                $locked->update([
+                    'forfeited_packs'  => (int) $locked->forfeited_packs + $burn['packs'],
+                    'forfeited_amount' => round((float) $locked->forfeited_amount + $burn['amount'], 2),
+                ]);
+            }
+
             // An edited booking goes back into the verification queue, so whatever it held
             // as a confirmed booking must be released first — otherwise re-confirming
             // increments the same seats a second time.
@@ -469,6 +479,24 @@ class BookingService
 
             $this->log($locked, $actor, "Agent resubmitted (v{$version->version})",
                 count($changes) . ' item(s) updated')->update(['booking_version_id' => $version->id]);
+
+            if ($burn['packs'] > 0) {
+                $this->log($locked, $actor,
+                    $burn['packs'] . ' pack(s) cancelled — RM ' . number_format($burn['amount'], 2) . ' deposit forfeited',
+                    'RM ' . number_format($burn['rate'], 2) . ' per cancelled pack');
+                $this->notifyParties($locked, 'booking',
+                    "Deposit forfeited on {$locked->booking_no}",
+                    $burn['packs'] . ' pack(s) cancelled at RM ' . number_format($burn['rate'], 2)
+                        . ' each — RM ' . number_format($burn['amount'], 2) . ' retained.');
+            }
+
+            // Whatever the penalty did not absorb is left sitting on the booking. Flagged
+            // loudly because releasing it is a staff decision, not an automatic refund.
+            if ($locked->refundableAmount() > 0) {
+                $this->log($locked, $actor,
+                    'Refundable: RM ' . number_format($locked->refundableAmount(), 2),
+                    'Paid more than the revised trip after the cancellation charge — raise a refund or carry it forward.');
+            }
 
             if ($wasConfirmed) {
                 $this->log($locked, $actor, 'Confirmed booking reopened for re-verification',
@@ -657,14 +685,38 @@ class BookingService
             'rooms'           => data_get($payload, 'rooms', []),
         ]);
 
-        // balance() goes negative and isFullyPaid() starts returning true — silently wrong.
-        $newTotal = max(0, $this->revisions->price($payload)['total'] - (float) $booking->discount);
-        if ($newTotal < (float) $booking->paid_amount) {
-            throw ValidationException::withMessages([
-                'rooms' => 'This change drops the total below what has already been paid (RM '
-                    . number_format($booking->paid_amount, 2) . '). Request a refund first.',
-            ]);
-        }
+        // Dropping below what was paid is no longer refused: the cancelled packs burn
+        // their deposit (see forfeiture()) and anything the penalty does not absorb sits
+        // on the booking as credit for staff to refund or carry forward.
+    }
+
+    /**
+     * Deposit burnt when an edit removes packs from a booking money has been taken on.
+     * RM x per cancelled pack, where a pack is one adult, child or senior — an infant
+     * has no seat of its own and is never charged. Nothing paid means there is no
+     * deposit to burn, so a plain typo-fix on an unpaid booking stays free.
+     *
+     * Measured against the LIVE booking, which makes it naturally cumulative:
+     * 10 → 7 burns 3, then 7 → 5 burns 2 more.
+     */
+    public function forfeiture(Booking $booking, array $payload): array
+    {
+        $rate = (float) ($booking->package?->cancellationFeePerPack() ?? 0);
+        $packs = (float) $booking->paid_amount > 0
+            ? max(0, $booking->chargeablePacks() - $this->revisions->packsInPayload($payload))
+            : 0;
+
+        return ['packs' => $packs, 'rate' => $rate, 'amount' => round($packs * $rate, 2)];
+    }
+
+    /**
+     * Cancelling outright is the same rule with nothing left over: every remaining pack
+     * is a cancelled pack. Already-forfeited packs are not charged twice, because
+     * chargeablePacks() reads the booking as it stands after earlier reductions.
+     */
+    public function cancellationForfeiture(Booking $booking): array
+    {
+        return $this->forfeiture($booking, ['rooms' => []]);
     }
 
     /**
@@ -743,9 +795,48 @@ class BookingService
             if ($booking->status === 'confirmed' && $booking->packageDate) {
                 $booking->packageDate->decrement('seats_booked', min($booking->total_pax, $booking->packageDate->seats_booked));
             }
+
+            // Every remaining pack is cancelled, so every remaining pack is charged.
+            $burn = $this->cancellationForfeiture($booking);
+            if ($burn['packs'] > 0) {
+                $booking->update([
+                    'forfeited_packs'  => (int) $booking->forfeited_packs + $burn['packs'],
+                    'forfeited_amount' => round((float) $booking->forfeited_amount + $burn['amount'], 2),
+                ]);
+            }
+
             $booking->update(['status' => 'cancelled', 'cancelled_at' => now()]);
             $this->commissions->reverse($booking, $actor);
             $this->log($booking, $actor, 'Booking cancelled', $reason);
+
+            if ($burn['packs'] > 0) {
+                $this->log($booking, $actor,
+                    $burn['packs'] . ' pack(s) cancelled — RM ' . number_format($burn['amount'], 2) . ' deposit forfeited',
+                    'RM ' . number_format($burn['rate'], 2) . ' per cancelled pack');
+                $this->notifyParties($booking, 'booking',
+                    "Deposit forfeited on {$booking->booking_no}",
+                    $burn['packs'] . ' pack(s) cancelled at RM ' . number_format($burn['rate'], 2)
+                        . ' each — RM ' . number_format($burn['amount'], 2) . ' retained.');
+            }
+
+            if ($booking->refundableAmount() > 0) {
+                $this->log($booking, $actor,
+                    'Refundable after cancellation charge: RM ' . number_format($booking->refundableAmount(), 2),
+                    'Paid RM ' . number_format($booking->paid_amount, 2)
+                        . ' less RM ' . number_format($booking->forfeited_amount, 2) . ' forfeited.');
+
+                // Only HQ can pay this back, and an agent-initiated cancellation would
+                // otherwise sit unseen until someone opened the booking.
+                $this->notifications->notifyMany(
+                    User::whereIn('role', ['super_admin', 'hq'])->get(),
+                    'booking',
+                    "Refund due on {$booking->booking_no}: RM " . number_format($booking->refundableAmount(), 2),
+                    'Cancelled by ' . ($actor?->name ?? 'system') . '. Paid RM '
+                        . number_format($booking->paid_amount, 2) . ' less RM '
+                        . number_format($booking->forfeited_amount, 2) . ' cancellation charge.',
+                    route('manage.bookings.show', $booking)
+                );
+            }
         });
     }
 

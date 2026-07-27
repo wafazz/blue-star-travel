@@ -255,6 +255,15 @@ class Booking extends Model
         return ! in_array($this->status, self::AGENT_LOCKED_STATUSES);
     }
 
+    /**
+     * Same open window as editing: anything not already finished or dead. The agent may
+     * cancel, but never refund — HQ decides what goes back (Planning §13.9h).
+     */
+    public function isCancellableByAgent(): bool
+    {
+        return ! in_array($this->status, self::AGENT_LOCKED_STATUSES);
+    }
+
     /** When the trip starts. A chosen departure wins; an open-dated booking uses travel_date. */
     public function arrivalDate(): ?Carbon
     {
@@ -294,9 +303,49 @@ class Booking extends Model
         return $parts ? implode(', ', $parts) : '—';
     }
 
+    /** The trip is off, so its price is no longer owed — only the refund still matters. */
+    const DEAD_STATUSES = ['cancelled', 'rejected', 'refunded'];
+
+    public function isDead(): bool
+    {
+        return in_array($this->status, self::DEAD_STATUSES);
+    }
+
+    /**
+     * A forfeited deposit is consumed OUT of what the customer paid, so it never inflates
+     * the trip price — it reduces how far their money goes.
+     */
     public function balance(): float
     {
-        return round((float) $this->total_amount - (float) $this->paid_amount, 2);
+        if ($this->isDead()) {
+            return 0.0;
+        }
+
+        return round((float) $this->total_amount + (float) $this->forfeited_amount - (float) $this->paid_amount, 2);
+    }
+
+    /** What is left of the customer's money once the penalty has been taken out of it. */
+    public function paidAfterForfeit(): float
+    {
+        return round((float) $this->paid_amount - (float) $this->forfeited_amount, 2);
+    }
+
+    /** Infants ride on a lap, not on a pack — they are never charged a cancellation fee. */
+    public function chargeablePacks(): int
+    {
+        return (int) $this->adults + (int) $this->children + (int) $this->seniors;
+    }
+
+    /**
+     * Paid, minus the penalty, minus whatever the trip still costs and whatever has
+     * already been paid back. A cancelled booking owes nothing, so the whole remainder
+     * is refundable. Never auto-paid — staff raise the refund.
+     */
+    public function refundableAmount(): float
+    {
+        $stillOwed = $this->isDead() ? 0.0 : (float) $this->total_amount;
+
+        return round(max(0, $this->paidAfterForfeit() - $stillOwed - $this->refundedAmount()), 2);
     }
 
     public function isFullyPaid(): bool

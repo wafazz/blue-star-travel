@@ -23,7 +23,10 @@
 @if ($u->hasAccess('finance'))
   <div class="text-uppercase small opacity-50 px-2 mt-3 mb-1" style="font-size:.7rem;letter-spacing:.05em">Finance</div>
   <a class="nav-link px-2 py-2 {{ request()->routeIs('manage.finance.dashboard') ? 'active' : '' }}" href="{{ route('manage.finance.dashboard') }}">📈 Finance</a>
-  <a class="nav-link px-2 py-2 {{ request()->routeIs('manage.finance.refunds') ? 'active' : '' }}" href="{{ route('manage.finance.refunds') }}">↩️ Refunds</a>
+  {{-- Refunds move money out, so the queue is HQ/super-admin only. --}}
+  @if ($u->hasRole('super_admin', 'hq'))
+    <a class="nav-link px-2 py-2 {{ request()->routeIs('manage.finance.refunds') ? 'active' : '' }}" href="{{ route('manage.finance.refunds') }}">↩️ Refunds</a>
+  @endif
 @endif
 
 @if ($u->hasAccess('commission'))

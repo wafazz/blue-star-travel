@@ -25,9 +25,25 @@
         <div class="sum"><span style="color:var(--muted)">Booking ID</span><span style="font-weight:700">{{ $booking->booking_no }}</span></div>
         <div class="sum"><span style="color:var(--muted)">Changes</span><span style="font-weight:700">{{ $changes }} item(s) updated</span></div>
 
+        @if ($forfeit['packs'] > 0)
+          <div class="sum" style="border-top:1px solid var(--line);padding-top:10px">
+            <span style="color:var(--danger)">Deposit forfeited</span>
+            <span style="font-weight:800;color:var(--danger)">RM {{ number_format($forfeit['amount'], 2) }}</span>
+          </div>
+          <div class="m" style="font-size:11.5px;line-height:1.6;color:var(--danger)">
+            {{ $forfeit['packs'] }} cancelled pack(s) × RM {{ number_format($forfeit['rate'], 2) }}, deducted from the
+            RM {{ number_format($booking->paid_amount, 2) }} already paid. This cannot be reversed once submitted.
+          </div>
+        @endif
+
         <label style="display:flex;gap:9px;align-items:flex-start;font-size:12.5px;padding:12px 0 4px">
           <input type="checkbox" name="confirm" value="1" style="margin-top:2px">
-          <span>I confirm the information is correct.</span>
+          <span>
+            I confirm the information is correct.
+            @if ($forfeit['packs'] > 0)
+              I have told the customer that RM {{ number_format($forfeit['amount'], 2) }} of what they paid is forfeited.
+            @endif
+          </span>
         </label>
       </div>
 

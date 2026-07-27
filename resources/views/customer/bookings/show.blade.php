@@ -29,7 +29,13 @@
       @endif
       <div class="sum"><span style="color:var(--muted)">Total</span><span style="font-weight:800">RM {{ number_format($booking->total_amount, 2) }}</span></div>
       <div class="sum"><span style="color:var(--muted)">Paid</span><span style="font-weight:700;color:var(--ok)">RM {{ number_format($booking->paid_amount, 2) }}</span></div>
-      <div class="sum total" style="font-size:15px"><span>Balance</span><span style="color:{{ $booking->balance() > 0 ? 'var(--danger)' : 'var(--ok)' }}">RM {{ number_format($booking->balance(), 2) }}</span></div>
+      @if ($booking->forfeited_amount > 0)
+        <div class="sum"><span style="color:var(--muted)">Cancellation charge ({{ $booking->forfeited_packs }} pack)</span><span style="font-weight:700;color:var(--danger)">− RM {{ number_format($booking->forfeited_amount, 2) }}</span></div>
+      @endif
+      <div class="sum total" style="font-size:15px"><span>Balance</span><span style="color:{{ $booking->balance() > 0 ? 'var(--danger)' : 'var(--ok)' }}">RM {{ number_format(max(0, $booking->balance()), 2) }}</span></div>
+      @if ($booking->refundableAmount() > 0)
+        <div class="sum"><span style="color:var(--muted)">Refundable</span><span style="font-weight:700;color:var(--ok)">RM {{ number_format($booking->refundableAmount(), 2) }}</span></div>
+      @endif
 
       @if ($booking->balance() > 0 && ! in_array($booking->status, ['cancelled', 'rejected']))
         <form method="POST" action="{{ route('gateway.initiate', $booking) }}" style="margin-top:12px">

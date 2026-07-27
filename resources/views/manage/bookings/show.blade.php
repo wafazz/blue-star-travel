@@ -299,11 +299,26 @@
         <hr class="my-2">
         <div class="d-flex justify-content-between mb-2"><span class="fw-semibold">Total</span><span class="fw-bold">RM {{ number_format($booking->total_amount, 2) }}</span></div>
         <div class="d-flex justify-content-between small mb-2"><span class="text-secondary">Paid</span><span class="text-success">RM {{ number_format($booking->paid_amount, 2) }}</span></div>
-        <div class="d-flex justify-content-between"><span class="fw-semibold">Balance</span><span class="fw-bold {{ $booking->balance() > 0 ? 'text-danger' : 'text-success' }}">RM {{ number_format($booking->balance(), 2) }}</span></div>
+        @if ($booking->forfeited_amount > 0)
+          <div class="d-flex justify-content-between small mb-2"><span class="text-secondary">Cancellation charge ({{ $booking->forfeited_packs }} pack)</span><span class="text-danger">− RM {{ number_format($booking->forfeited_amount, 2) }}</span></div>
+        @endif
+        <div class="d-flex justify-content-between"><span class="fw-semibold">Balance</span><span class="fw-bold {{ $booking->balance() > 0 ? 'text-danger' : 'text-success' }}">RM {{ number_format(max(0, $booking->balance()), 2) }}</span></div>
+        @if ($booking->refundableAmount() > 0)
+          <div class="alert alert-warning small mt-2 mb-0 py-2">
+            <strong>Refundable: RM {{ number_format($booking->refundableAmount(), 2) }}</strong><br>
+            Paid RM {{ number_format($booking->paid_amount, 2) }} less RM {{ number_format($booking->forfeited_amount, 2) }} forfeited.
+            @if (auth()->user()->hasRole('super_admin', 'hq'))
+              Raise a refund or carry it forward.
+            @else
+              Refunds are handled by HQ.
+            @endif
+          </div>
+        @endif
         @if ($booking->refundedAmount() > 0)
           <div class="d-flex justify-content-between small mt-2"><span class="text-secondary">Refunded</span><span class="text-danger">− RM {{ number_format($booking->refundedAmount(), 2) }}</span></div>
         @endif
-        @if ($booking->paid_amount > 0 && $booking->refundedAmount() < $booking->paid_amount && ! in_array($booking->status, ['refunded']))
+        {{-- Paying money back is HQ's call, wherever the cancellation came from. --}}
+        @if (auth()->user()->hasRole('super_admin', 'hq') && $booking->paid_amount > 0 && $booking->refundedAmount() < $booking->paidAfterForfeit() && ! in_array($booking->status, ['refunded']))
           <button class="btn btn-sm btn-outline-danger w-100 mt-3" data-bs-toggle="modal" data-bs-target="#refundModal">↩️ Request Refund</button>
         @endif
         @if ($booking->refunds->isNotEmpty())
@@ -436,13 +451,20 @@
     </form>
   </div></div></div>
 
-  <!-- Refund Modal -->
+  <!-- Refund Modal — HQ only; the route rejects anyone else, so never render the form for them. -->
+  @if (auth()->user()->hasRole('super_admin', 'hq'))
   <div class="modal fade" id="refundModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
     <form method="POST" action="{{ route('manage.bookings.refund', $booking) }}">@csrf
       <div class="modal-header"><h5 class="modal-title">Request Refund</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
       <div class="modal-body">
         <div class="row g-3">
-          <div class="col-6"><label class="form-label small fw-semibold">Amount (RM)</label><input type="number" name="amount" step="0.01" min="0.01" max="{{ number_format($booking->paid_amount, 2, '.', '') }}" value="{{ number_format(max(0, $booking->paid_amount - $booking->refundedAmount()), 2, '.', '') }}" class="form-control" required></div>
+          {{-- Capped at the money actually left after the cancellation charge; defaults to
+               paid − charge − already refunded, which is the amount owed back. --}}
+          <div class="col-6"><label class="form-label small fw-semibold">Amount (RM)</label><input type="number" name="amount" step="0.01" min="0.01" max="{{ number_format(max(0, $booking->paidAfterForfeit() - $booking->refundedAmount()), 2, '.', '') }}" value="{{ number_format($booking->refundableAmount(), 2, '.', '') }}" class="form-control" required>
+            @if ($booking->forfeited_amount > 0)
+              <div class="form-text small">Paid RM {{ number_format($booking->paid_amount, 2) }} − RM {{ number_format($booking->forfeited_amount, 2) }} cancellation charge ({{ $booking->forfeited_packs }} pack).</div>
+            @endif
+          </div>
           <div class="col-6"><label class="form-label small fw-semibold">Method</label><select name="method" class="form-select">@foreach (\App\Models\Refund::METHODS as $k => $label)<option value="{{ $k }}">{{ $label }}</option>@endforeach</select></div>
           <div class="col-12"><label class="form-label small fw-semibold">Reason</label><textarea name="reason" rows="2" class="form-control" placeholder="Cancellation, overpayment…"></textarea></div>
         </div>
@@ -450,4 +472,5 @@
       <div class="modal-footer"><button class="btn btn-outline-danger">Submit Refund Request</button></div>
     </form>
   </div></div></div>
+  @endif
 @endsection

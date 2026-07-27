@@ -123,6 +123,7 @@ class PackageController extends Controller
             'duration_days'   => ['required', 'integer', 'min:1', 'max:365'],
             'duration_nights' => ['required', 'integer', 'min:0', 'max:365'],
             'date_mode'       => ['required', 'in:' . implode(',', array_keys(Package::DATE_MODES))],
+            'cancellation_fee_per_pack' => ['nullable', 'numeric', 'min:0', 'max:99999.99'],
             'summary'         => ['nullable', 'string', 'max:500'],
             'description'     => ['nullable', 'string'],
             'itinerary'       => ['nullable', 'string'],

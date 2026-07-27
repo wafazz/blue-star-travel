@@ -55,6 +55,17 @@
               </select>
               <div class="form-text small" id="dateModeHint"></div>
             </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold small">Cancellation Charge (RM per pack)</label>
+              <input type="number" name="cancellation_fee_per_pack" step="0.01" min="0"
+                     value="{{ old('cancellation_fee_per_pack', $package->cancellation_fee_per_pack) }}"
+                     class="form-control" placeholder="{{ number_format(\App\Models\Package::DEFAULT_CANCELLATION_FEE, 2) }}">
+              <div class="form-text small">
+                Charged per pack removed when a paid booking is reduced. Blank uses the house rate
+                (RM {{ number_format(\App\Models\Package::DEFAULT_CANCELLATION_FEE, 2) }}); enter 0 to waive it.
+                Infants are never charged.
+              </div>
+            </div>
             <div class="col-12">
               <label class="form-label fw-semibold small">Summary</label>
               <textarea name="summary" rows="2" class="form-control" maxlength="500">{{ old('summary', $package->summary) }}</textarea>

@@ -217,12 +217,17 @@ class BookingController extends Controller
         // so a stale draft shows what it would actually change right now.
         $live = $this->revisions->snapshot($booking);
         $priced = $this->revisions->price($draft->payload);
+        $forfeit = $this->bookings->forfeiture($booking, $draft->payload);
 
         return view('agent.bookings.review', [
             'booking'  => $booking,
             'draft'    => $draft,
             'rows'     => $this->revisions->diff($live, $draft->payload),
-            'newTotal' => max(0, $priced['total'] - (float) $booking->discount),
+            'forfeit'  => $forfeit,
+            'newTotal' => $newTotal = max(0, $priced['total'] - (float) $booking->discount),
+            // The penalty comes out of what was paid, so it lands in the balance, not the total.
+            'newBalance' => round($newTotal + (float) $booking->forfeited_amount
+                + $forfeit['amount'] - (float) $booking->paid_amount, 2),
         ]);
     }
 
@@ -240,6 +245,7 @@ class BookingController extends Controller
         return view('agent.bookings.confirm', [
             'booking' => $booking,
             'changes' => count($this->revisions->diff($this->revisions->snapshot($booking), $draft->payload)),
+            'forfeit' => $this->bookings->forfeiture($booking, $draft->payload),
         ]);
     }
 
@@ -290,6 +296,43 @@ class BookingController extends Controller
         $this->bookings->requestAmendment($booking, $request->user(), $data);
 
         return back()->with('ok', 'Amendment request submitted — HQ will review it.');
+    }
+
+    /**
+     * The agent cancels; HQ refunds. Cancelling forfeits RM x per remaining pack out of
+     * whatever has been paid — the agent is shown that figure and has to type CANCEL,
+     * because nothing here is reversible.
+     */
+    public function cancel(Booking $booking, Request $request)
+    {
+        abort_unless($booking->agent_id === $request->user()->id, 403);
+
+        if (! $booking->isCancellableByAgent()) {
+            return back()->withErrors(['status' => 'This booking can no longer be cancelled.']);
+        }
+
+        $request->validate([
+            'confirm' => ['required', 'in:CANCEL'],
+            'reason'  => ['required', 'string', 'max:1000'],
+        ], [
+            'confirm.in'       => 'Type CANCEL to confirm — this cannot be undone.',
+            'confirm.required' => 'Type CANCEL to confirm — this cannot be undone.',
+            'reason.required'  => 'Please say why the customer is cancelling.',
+        ]);
+
+        $this->bookings->cancel($booking, $request->user(), $request->input('reason'));
+        $booking->refresh();
+
+        $note = $booking->forfeited_amount > 0
+            ? 'Booking cancelled. RM ' . number_format($booking->forfeited_amount, 2)
+                . ' forfeited (' . $booking->forfeited_packs . ' pack).'
+            : 'Booking cancelled.';
+
+        if ($booking->refundableAmount() > 0) {
+            $note .= ' HQ will process the RM ' . number_format($booking->refundableAmount(), 2) . ' refund.';
+        }
+
+        return redirect()->route('agent.bookings.show', $booking)->with('ok', $note);
     }
 
     public function discardDraft(Booking $booking, Request $request)

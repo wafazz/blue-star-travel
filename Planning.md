@@ -570,7 +570,7 @@ was before — lands on **Submitted** (`pending_verification`) for re-verificati
 | **Stale `confirmed_at`** on a booking that is no longer confirmed. | Nulled on resubmission. |
 | **Commission computed on the old total.** | Same policy as an approved amendment (Q11b): if the total moved and a non-reversed `Commission` exists, reverse then recalculate, with a timeline entry. Verified by test. |
 | **Invoice / voucher hold the old details.** | Left in place; `confirm()` regenerates both on re-confirmation. The timeline records "Confirmed booking reopened for re-verification". |
-| **Reducing a paid booking below what was paid.** | Still blocked by `assertResubmittable()` — this is the case your Booking Amendment spec calls *forfeited deposit*, which is not built yet. |
+| **Reducing a paid booking below what was paid.** | [✔] **Built 2026-07-27** — no longer blocked. Cancelled packs burn RM 100 each out of the deposit and the remainder is held as credit. See §13.9g. |
 
 **Flagged, not resolved — two paths now overlap.** A confirmed booking can be changed either by
 editing it directly (this rule) or via **Request Amendment** (Phase F). They behave differently:
@@ -633,6 +633,91 @@ Plus the status badge, since an agent needs to know a trip is still unverified.
   single traveller.
 - **Open-dated bookings have no departure row**, so the query needs the `doesntHave('packageDate')`
   branch or they'd vanish from the list entirely. Covered by a test.
+
+### 13.9g Forfeited deposit on a pack reduction and on cancellation (2026-07-27)
+
+Closes the last row of the §13.9d risk table. **Client rule:** cancelling packs on a booking that
+has already been paid on burns **RM 100 per cancelled pack**, and that money is **taken out of what
+the customer paid** — it is not added to the trip price. Applies to a partial reduction *and* to
+cancelling the booking outright. Suite 117 → **132 passing**.
+
+**The penalty is a deduction from `paid_amount`, never an addition to `total_amount`.** This was
+built the wrong way round first (penalty folded into the total) and corrected: `total_amount` is
+the trip price alone, which keeps invoices, revenue reports and the commission base honest with no
+special-casing. The arithmetic is identical either way; the bookkeeping is not.
+
+    balance()          = total_amount + forfeited_amount − paid_amount   (0 once the trip is dead)
+    paidAfterForfeit() = paid_amount − forfeited_amount
+    refundableAmount() = paidAfterForfeit() − (dead ? 0 : total_amount) − refundedAmount()
+
+Worked examples, all verified end-to-end on MySQL:3307 — Pulau Redang 4D3N, 10 packs
+(6 adults + 3 children + 1 senior) + 2 infants = RM 9,100.
+
+| Scenario | Trip | Paid | Forfeited | Balance | Refundable |
+|---|---|---|---|---|---|
+| Reduce 10 → 7 packs, deposit RM 3,000 | 6,400 | 3,000 | 3 × 100 = **300** | **3,700** | 0 |
+| Reduce 10 → 7 packs, fully paid RM 9,100 | 6,400 | 9,100 | **300** | 0 | **2,400** |
+| Cancel outright, deposit RM 3,000 | 6,400 | 3,000 | 10 × 100 = **1,000** | **0** | **2,000** |
+
+**Cancellation reuses the same rule** — `cancellationForfeiture()` is just
+`forfeiture($booking, ['rooms' => []])`, i.e. reduce to zero packs. Because the accrual measures
+against the live booking, a reduce-then-cancel charges 3 + 7 = **10 packs, never 13**.
+
+**A dead booking owes nothing.** `balance()` returns 0 for `cancelled`/`rejected`/`refunded`
+(`Booking::DEAD_STATUSES`). Without this a cancelled booking kept reporting an outstanding balance
+— which the finance dashboard sums into "outstanding" — and the penalty made that number worse.
+This was a **pre-existing** wart the feature surfaced, fixed here.
+
+**Rules as built:**
+- **A pack is one adult, child or senior.** Infants are never charged — they have no seat of their
+  own, and `roomLines()` already refuses to let them force an extra room.
+- **Nothing paid ⇒ nothing burnt.** The penalty only fires when `paid_amount > 0`, so an agent
+  fixing a typo on an unsubmitted booking is not charged for it.
+- **Only reductions.** Adding packs re-prices normally. A mixed edit is netted, then floored at 0.
+- **Rate is per package** (`packages.cancellation_fee_per_pack`, on the package form). Null uses
+  `Package::DEFAULT_CANCELLATION_FEE` (RM 100); an explicit **0 waives it**.
+- **Accrual, not recomputation.** `bookings.forfeited_packs` / `forfeited_amount` are cumulative:
+  10 → 7 then 7 → 5 charges for **5** packs, not 2. Measuring against the live booking each time is
+  what makes this fall out for free — there is no separate baseline to keep in sync.
+- **`total_amount` stays the trip price.** `resubmitRevision()` banks the burn into
+  `forfeited_amount`; `apply()` deliberately does *not* add it to the total.
+- **Commission needs no special case** — it reads `total_amount`, which the penalty never enters.
+
+**The old guard is gone, deliberately.** `assertResubmittable()` used to refuse any edit that
+dropped the total below `paid_amount`. That block is what made this scenario impossible, so it was
+removed: the reduction now goes through, and whatever is left after the penalty becomes
+`Booking::refundableAmount()` — surfaced on the agent, staff and customer booking screens and the
+invoice, logged to the timeline, and pre-filled into the Request Refund modal (capped at
+`paidAfterForfeit() − refundedAmount()`). **Releasing it is still a manual staff decision —
+nothing auto-refunds.**
+
+**Agent sees it before committing**, on both the review diff (a red "Cancellation Charge" card with
+packs × rate) and the confirm screen, where the consent checkbox text changes to name the amount.
+
+### 13.9h Agent cancels, HQ refunds (2026-07-27)
+
+**Client rule:** the agent may cancel a booking themselves, but **only HQ pays anything back**.
+Suite 132 → **143 passing**.
+
+- `POST /agent/bookings/{booking}/cancel` — own booking only (403 otherwise), open on the same
+  window as editing (`isCancellableByAgent()` = not `completed`/`cancelled`/`rejected`/`refunded`).
+  Runs the existing `BookingService::cancel()`, so seat release, commission reversal and the
+  per-pack forfeiture (§13.9g) all apply unchanged.
+- **Two-key confirmation, validated server-side:** a reason *and* the literal string `CANCEL`.
+  Deliberately a typed word rather than a JS `confirm()` — a native dialog would be untestable and
+  freezes browser automation.
+- The agent sees the charge **before** committing: packs · rate · "will be forfeited", plus
+  "HQ processes any refund — you cannot pay money back from here."
+
+**Refunds are now HQ/super-admin only.** All five routes (`finance.refunds`, `bookings.refund`,
+approve, reject, process) moved inside `role:super_admin,hq`, matching the payment-gateway
+precedent. The Request Refund button, **the modal itself** and the Refunds nav link are hidden from
+`admin` staff, who instead read "Refunds are handled by HQ". Hiding the button alone is not enough —
+the modal markup still contains the form, so it must be gated too.
+
+**HQ is notified on cancellation** when `refundableAmount() > 0` —
+"Refund due on {booking}: RM x". Without this an agent-initiated cancellation would sit unseen
+until somebody happened to open the booking.
 
 ### 13.10 Factory assignment
 

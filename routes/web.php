@@ -129,6 +129,9 @@ Route::middleware(['auth', 'role:agent'])->prefix('agent')->name('agent.')->grou
     // Confirmed bookings are never edited in place — the agent asks, HQ approves.
     Route::post('/bookings/{booking}/amendment', [AgentBooking::class, 'requestAmendment'])->name('bookings.amendment');
 
+    // The agent may cancel; only HQ may pay anything back (see the refund group below).
+    Route::post('/bookings/{booking}/cancel', [AgentBooking::class, 'cancel'])->name('bookings.cancel');
+
     // Wallet / commission / network
     Route::get('/wallet', [AgentWallet::class, 'index'])->name('wallet.index');
     Route::post('/wallet/withdraw', [AgentWallet::class, 'withdraw'])->name('wallet.withdraw');
@@ -244,13 +247,18 @@ Route::middleware(['auth', 'role:super_admin,hq,admin'])->group(function () {
         Route::post('payments/{payment}/verify', [ManagePayment::class, 'verify'])->name('payments.verify');
         Route::post('payments/{payment}/reject', [ManagePayment::class, 'reject'])->name('payments.reject');
 
-        // Finance + refunds
+        // Finance
         Route::get('finance', [ManageFinance::class, 'dashboard'])->name('finance.dashboard');
-        Route::get('finance/refunds', [ManageFinance::class, 'refunds'])->name('finance.refunds');
-        Route::post('bookings/{booking}/refund', [ManageFinance::class, 'requestRefund'])->name('bookings.refund');
-        Route::post('finance/refunds/{refund}/approve', [ManageFinance::class, 'approveRefund'])->name('finance.refunds.approve');
-        Route::post('finance/refunds/{refund}/reject', [ManageFinance::class, 'rejectRefund'])->name('finance.refunds.reject');
-        Route::post('finance/refunds/{refund}/process', [ManageFinance::class, 'processRefund'])->name('finance.refunds.process');
+
+        // Refunds pay money back out, so the whole workflow is HQ/super-admin only —
+        // an agent may cancel a booking, but only HQ decides what goes back.
+        Route::middleware('role:super_admin,hq')->group(function () {
+            Route::get('finance/refunds', [ManageFinance::class, 'refunds'])->name('finance.refunds');
+            Route::post('bookings/{booking}/refund', [ManageFinance::class, 'requestRefund'])->name('bookings.refund');
+            Route::post('finance/refunds/{refund}/approve', [ManageFinance::class, 'approveRefund'])->name('finance.refunds.approve');
+            Route::post('finance/refunds/{refund}/reject', [ManageFinance::class, 'rejectRefund'])->name('finance.refunds.reject');
+            Route::post('finance/refunds/{refund}/process', [ManageFinance::class, 'processRefund'])->name('finance.refunds.process');
+        });
 
         // Commission (dynamic-depth MLM)
         Route::get('commission', [ManageCommission::class, 'index'])->name('commission.index');
