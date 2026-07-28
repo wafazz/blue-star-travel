@@ -14,6 +14,7 @@ class Booking extends Model
 
     protected $casts = [
         'travel_date'           => 'date',
+        'return_date'           => 'date',
         'submitted_at'          => 'datetime',
         'sent_to_provider_at'   => 'datetime',
         'provider_responded_at' => 'datetime',
@@ -276,6 +277,11 @@ class Booking extends Model
             return $this->packageDate->return_date;
         }
 
+        // What the agent actually typed beats anything derived from the package length.
+        if ($this->return_date) {
+            return $this->return_date;
+        }
+
         $nights = (int) ($this->package?->duration_nights ?? 0);
 
         return $nights > 0 ? $this->arrivalDate()?->copy()->addDays($nights) : null;
@@ -328,6 +334,66 @@ class Booking extends Model
     public function paidAfterForfeit(): float
     {
         return round((float) $this->paid_amount - (float) $this->forfeited_amount, 2);
+    }
+
+    /**
+     * Every payment the agent has actually filed. A rejected slip is not money, so it is
+     * left out of all four deposit figures — it stays visible in the history instead.
+     */
+    public function recordedPayments()
+    {
+        return $this->payments->where('status', '!=', 'rejected')->sortBy('id')->values();
+    }
+
+    /** The deposit taken when the booking was submitted — the first thing the agent filed. */
+    public function originalDeposit(): ?Payment
+    {
+        return $this->recordedPayments()->first();
+    }
+
+    /** Everything collected after that first deposit. */
+    public function additionalDepositsTotal(): float
+    {
+        return round((float) $this->recordedPayments()->skip(1)->sum('amount'), 2);
+    }
+
+    /**
+     * Recorded ≠ verified. This is what the agent has filed; `paid_amount` is what staff
+     * have confirmed, and only that drives balance() and commission.
+     */
+    public function recordedTotal(): float
+    {
+        return round((float) $this->recordedPayments()->sum('amount'), 2);
+    }
+
+    /** Outstanding against what has been filed, so the agent is not asked to collect twice. */
+    public function outstandingRecorded(): float
+    {
+        if ($this->isDead()) {
+            return 0.0;
+        }
+
+        return round(max(0, (float) $this->total_amount + (float) $this->forfeited_amount - $this->recordedTotal()), 2);
+    }
+
+    /** Filed but not yet checked by staff — the gap between the two totals above. */
+    public function pendingVerificationTotal(): float
+    {
+        return round($this->recordedTotal() - (float) $this->paid_amount, 2);
+    }
+
+    /**
+     * Label an incoming payment against what is still outstanding. Anything short of the
+     * balance is an instalment — the first one is the deposit, the rest are partials.
+     * Only a payment that clears the balance is a full settlement.
+     */
+    public function paymentTypeFor(float $amount): string
+    {
+        if ($amount < $this->balance() - 0.001) {
+            return $this->payments()->exists() ? 'partial' : 'deposit';
+        }
+
+        return $this->paid_amount > 0 ? 'balance' : 'full';
     }
 
     /** Infants ride on a lap, not on a pack — they are never charged a cancellation fee. */

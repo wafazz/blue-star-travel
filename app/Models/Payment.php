@@ -33,4 +33,39 @@ class Payment extends Model
     {
         return self::METHODS[$this->method] ?? ucfirst($this->method);
     }
+
+    /** "Bank Transfer / Slip" blows the history table past the phone frame. */
+    public function methodShort(): string
+    {
+        return [
+            'fpx'            => 'FPX',
+            'online_banking' => 'Online',
+            'slip_upload'    => 'Bank Transfer',
+            'cash'           => 'Cash',
+            'card'           => 'Card',
+        ][$this->method] ?? 'Other';
+    }
+
+    /** One colour per method, so a history row is readable at a glance. */
+    public function methodBadge(): string
+    {
+        return [
+            'fpx'            => 'info',
+            'online_banking' => 'primary',
+            'slip_upload'    => 'dark',
+            'cash'           => 'success',
+            'card'           => 'warning',
+        ][$this->method] ?? 'secondary';
+    }
+
+    public function statusBadge(): string
+    {
+        return ['verified' => 'success', 'rejected' => 'danger'][$this->status] ?? 'warning';
+    }
+
+    /** What the agent sees on a row: "Recorded" until staff have actually checked it. */
+    public function statusLabel(): string
+    {
+        return ['verified' => 'Verified', 'rejected' => 'Rejected'][$this->status] ?? 'Recorded';
+    }
 }

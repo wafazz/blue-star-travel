@@ -87,7 +87,7 @@ class BookingController extends Controller
             'reference' => ['nullable', 'string', 'max:255'],
             'slip'      => ['required', 'image', 'max:4096'],
         ]);
-        $data['type'] = $booking->paid_amount > 0 ? 'balance' : 'full';
+        $data['type'] = $booking->paymentTypeFor((float) $data['amount']);
         $data['slip_path'] = $request->file('slip')->store('payment-slips', 'local');
 
         $this->bookings->recordPayment($booking, $data, $request->user());

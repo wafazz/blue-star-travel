@@ -15,10 +15,12 @@
       'is_default' => (bool) $pr->is_default,
     ])->values(),
     'date_mode' => $p->date_mode,
+    'nights' => (int) ($p->duration_nights ?? 0),
     'dates' => $p->bookableDates()->map(fn ($d) => [
       'id' => $d->id,
       'label' => $d->depart_date?->format('d M Y') . ($d->return_date ? ' → ' . $d->return_date->format('d M Y') : ''),
       'depart' => $d->depart_date?->format('Y-m-d'),
+      'ret' => $d->return_date?->format('Y-m-d'),
       'seats' => $d->seats_total > 0 ? $d->seatsAvailable() : null,
     ])->values(),
   ])->keyBy('id');
@@ -101,12 +103,41 @@
   function applyDateMode(pkg) {
     const mode = pkg ? pkg.date_mode : 'fixed';
     $('departureWrap').style.display = mode === 'open' ? 'none' : '';
-    $('travelWrap').style.display = mode === 'fixed' ? 'none' : '';
     $('dateNote').textContent = pkg ? (DATE_NOTES[mode] || '') : '';
     $('package_date_id').required = mode === 'fixed';
-    $('travel_date').required = mode === 'open';
     if (mode === 'open') $('package_date_id').value = '';
-    if (mode === 'fixed') $('travel_date').value = '';
+    // The check-in / check-out pair stays on screen in every mode — on a scheduled
+    // departure it shows the dates the agent is buying, locked to the schedule.
+    syncDates();
+  }
+
+  /**
+   * Keep check-in / check-out honest. A chosen departure owns both dates (the server
+   * re-derives them from it either way), so they are shown read-only. Otherwise the agent
+   * types the check-in and the package length pre-fills a check-out they can still change.
+   */
+  function syncDates() {
+    const pkg = PKGS[$('package_id').value];
+    const dep = pkg ? pkg.dates.find(d => d.id == $('package_date_id').value) : null;
+    const inp = $('travel_date'), out = $('return_date');
+
+    if (dep) {
+      inp.value = dep.depart || '';
+      if (out) out.value = dep.ret || '';
+    } else if (out && inp.value && pkg && pkg.nights > 0 && (!out.value || out.value <= inp.value)) {
+      // Re-derive when it is empty OR no longer after the check-in — moving the check-in
+      // later would otherwise leave a check-out in the past, which the server rejects.
+      const d = new Date(inp.value);
+      d.setDate(d.getDate() + pkg.nights);
+      out.value = d.toISOString().slice(0, 10);
+    }
+
+    inp.readOnly = !!dep;
+    inp.required = !dep;
+    if (out) {
+      out.readOnly = !!dep;
+      out.min = inp.value || out.min;
+    }
   }
 
   function fillDepartures(pkg, selectedId) {
@@ -125,6 +156,10 @@
 
   function fillPackage() {
     const pkg = PKGS[$('package_id').value];
+    // Another package means other departures and another trip length, so dates carried
+    // over from the previous one are wrong — same reason the room lines are wiped below.
+    $('travel_date').value = '';
+    if ($('return_date')) $('return_date').value = '';
     fillDepartures(pkg);
     applyDateMode(pkg);
     // Rates belong to the package, so a package change invalidates every room line.
@@ -136,6 +171,7 @@
   function recalc() {
     const pkg = PKGS[$('package_id').value];
     let total = 0, pax = 0, html = '';
+    let capacityOk = true;
 
     document.querySelectorAll('.room-row').forEach(row => {
       const pr = pkg ? pkg.pricings.find(p => p.id == row.querySelector('.room-type').value) : null;
@@ -144,11 +180,25 @@
       const n = a + c + s + i;
       const line = pr ? a * pr.adult_price + c * pr.child_price + s * pr.senior_price + i * pr.infant_price : 0;
 
-      // Infants share a bed, so they never force an extra room.
+      // Infants share a bed, so they never force an extra room — and they are not counted
+      // against the tier's occupancy either.
+      const occupants = a + c + s;
       const rooms = pr ? Math.ceil(Math.max(1, n - i) / pr.capacity) : 0;
-      row.querySelector('.room-note').textContent = n
-        ? `${n} pax · ${rooms} room${rooms > 1 ? 's' : ''} · ${money(line)}`
-        : 'No passengers in this room type yet.';
+      const note = row.querySelector('.room-note');
+
+      // The admin sets each tier's occupancy as a ceiling. Fewer is fine — that is single
+      // or double occupancy — but the room can never take more than it holds.
+      if (pr && occupants > pr.capacity) {
+        capacityOk = false;
+        note.style.color = 'var(--danger)';
+        note.textContent = `${pr.tier_name} holds at most ${pr.capacity} pax — you have ${occupants}.`
+          + ' Remove some, or add another room line.';
+      } else {
+        note.style.color = '';
+        note.textContent = n
+          ? `${n} pax · ${rooms} room${rooms > 1 ? 's' : ''} · ${money(line)}`
+          : 'No passengers in this room type yet.';
+      }
 
       total += line; pax += n;
       if (n && pr) html += `<div class="sum"><span>${pr.tier_name} × ${n} pax (${rooms} rm)</span><span>${money(line)}</span></div>`;
@@ -157,7 +207,15 @@
     $('s-rooms').innerHTML = html;
     $('s-pax').textContent = pax;
     $('s-total').textContent = money(total);
-    $('roomWarn').textContent = pax === 0 ? 'Add at least one passenger.' : '';
+    $('roomWarn').textContent = pax === 0
+      ? 'Add at least one passenger.'
+      : (capacityOk ? '' : 'A room cannot hold more pax than its type allows.');
+
+    // Read by gateSubmit() — the server enforces the same rule in assertRoomCapacity().
+    window.roomCapacityOk = capacityOk && pax > 0;
+
+    // The create form gates its submit button on the pack lines; the edit form has no gate.
+    if (window.gateSubmit) window.gateSubmit();
   }
 
   // Rebuild exactly what was submitted (validation bounce) or staged (draft edit),
@@ -175,4 +233,7 @@
   }
 
   $('package_id').addEventListener('change', fillPackage);
+  // Picking a departure rewrites both dates; typing a check-in pre-fills the check-out.
+  $('package_date_id').addEventListener('change', syncDates);
+  $('travel_date').addEventListener('change', syncDates);
 </script>

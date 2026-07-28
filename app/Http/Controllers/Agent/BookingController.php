@@ -115,6 +115,9 @@ class BookingController extends Controller
             'new_customer_email' => ['nullable', 'email', 'max:255'],
             'type'               => ['required', 'in:' . implode(',', array_keys(Booking::TYPES))],
             'travel_date'        => ['nullable', 'date'],
+            // Check-out. Only meaningful on an open-dated package — a scheduled departure
+            // carries its own return date and the two must never disagree.
+            'return_date'        => ['nullable', 'date', 'after:travel_date'],
             'pickup_location'    => ['nullable', 'string', 'max:255'],
             'arrival_time'       => ['nullable', 'date_format:H:i'],
             // Pax now live on the room lines; these stay for the customer portal + API callers.
@@ -132,6 +135,15 @@ class BookingController extends Controller
             'rooms.*.children'             => ['nullable', 'integer', 'min:0', 'max:99'],
             'rooms.*.seniors'              => ['nullable', 'integer', 'min:0', 'max:99'],
             'rooms.*.infants'              => ['nullable', 'integer', 'min:0', 'max:99'],
+            // No booking leaves the agent without its deposit receipt — the pack lines and
+            // the date are enforced by assertDateSelection() below.
+            'deposit_amount'    => ['required', 'numeric', 'min:0.01'],
+            'deposit_method'    => ['nullable', 'in:' . implode(',', array_keys(Payment::METHODS))],
+            'deposit_reference' => ['nullable', 'string', 'max:255'],
+            'deposit_slip'      => ['required', 'image', 'max:4096'],
+        ], [
+            'deposit_amount.required' => 'Enter the deposit amount collected.',
+            'deposit_slip.required'   => 'Attach the deposit receipt.',
         ]);
         $data['agent_id'] = $request->user()->id;
 
@@ -148,11 +160,22 @@ class BookingController extends Controller
             abort_unless(Customer::where('id', $data['customer_id'])->where('agent_id', $request->user()->id)->exists(), 403);
         }
 
-        $this->bookings->assertDateSelection(Package::findOrFail($data['package_id']), $data);
+        $package = Package::findOrFail($data['package_id']);
+        $this->bookings->assertDateSelection($package, $data);
+        $this->bookings->assertRoomCapacity($package, $data);
 
         $booking = $this->bookings->create($data, $request->user(), $request->input('pax', []));
 
-        return redirect()->route('agent.bookings.show', $booking)->with('ok', "Booking {$booking->booking_no} submitted.");
+        $this->bookings->recordPayment($booking, [
+            'amount'    => $data['deposit_amount'],
+            'method'    => $data['deposit_method'] ?? 'slip_upload',
+            'reference' => $data['deposit_reference'] ?? null,
+            'type'      => 'deposit',
+            'slip_path' => $request->file('deposit_slip')->store('payment-slips', 'local'),
+        ], $request->user());
+
+        return redirect()->route('agent.bookings.show', $booking)
+            ->with('ok', "Booking {$booking->booking_no} submitted — deposit receipt pending verification.");
     }
 
     public function show(Booking $booking, Request $request)
@@ -258,6 +281,10 @@ class BookingController extends Controller
             'confirm.accepted' => 'Please confirm the information is correct.',
         ]);
 
+        // NOT capacity-checked. A revision exists to shrink or grow a party (that is what
+        // the forfeiture rules price), and hard-blocking it would make an existing booking
+        // uneditable until its rooms were restructured. The edit form still shows the same
+        // red warning inline. Enforced on creation, where the client asked for it.
         $version = $this->bookings->resubmitRevision($booking, $request->user());
 
         // Step 6 — the client's success screen, reached by redirect so a refresh is safe.
@@ -474,11 +501,22 @@ class BookingController extends Controller
             'reference' => ['nullable', 'string', 'max:255'],
             'slip'      => ['required', 'image', 'max:4096'],
         ]);
-        $data['type'] = $booking->paid_amount > 0 ? 'balance' : 'full';
+        $data['type'] = $booking->paymentTypeFor((float) $data['amount']);
         $data['slip_path'] = $request->file('slip')->store('payment-slips', 'local');
 
         $this->bookings->recordPayment($booking, $data, $request->user());
 
         return back()->with('ok', 'Payment slip uploaded — pending verification.');
+    }
+
+    /** The agent's message to admin. Its own column, so `notes` keeps the customer's requests. */
+    public function saveNote(Booking $booking, Request $request)
+    {
+        abort_unless($booking->agent_id === $request->user()->id, 403);
+
+        $data = $request->validate(['agent_note' => ['nullable', 'string', 'max:2000']]);
+        $booking->update(['agent_note' => $data['agent_note'] ?? null]);
+
+        return back()->with('ok', 'Note saved — admin will see it on this booking.');
     }
 }

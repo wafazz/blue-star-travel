@@ -36,10 +36,43 @@ class BookingService
     {
         $year = now()->format('Y');
         $prefix = "BK-{$year}-";
-        $last = Booking::where('booking_no', 'like', $prefix . '%')->orderByDesc('id')->value('booking_no');
-        $seq = $last ? ((int) substr($last, strlen($prefix))) + 1 : 1;
 
-        return $prefix . str_pad((string) $seq, 5, '0', STR_PAD_LEFT);
+        // Take the highest SEQUENCE, not the newest id, and ignore anything that isn't a
+        // plain number: a hand-made code (BK-2026-RDG10) read as an int is 0, which then
+        // regenerates BK-2026-00001 and hits the unique index.
+        $seq = Booking::where('booking_no', 'like', $prefix . '%')->pluck('booking_no')
+            ->map(fn ($no) => substr((string) $no, strlen($prefix)))
+            ->filter(fn ($s) => ctype_digit($s))
+            ->max();
+
+        return $prefix . str_pad((string) ((int) $seq + 1), 5, '0', STR_PAD_LEFT);
+    }
+
+    /**
+     * A room line may never hold MORE than the occupancy the admin configured on its tier
+     * — a 2-pax room will not take 3. Fewer is fine: a party of 1 in a quad is single
+     * occupancy, and they pay the quad rate for it. Infants are excluded because they
+     * share a bed, the same rule roomLines() uses to count physical rooms.
+     */
+    public function assertRoomCapacity(Package $package, array $data): void
+    {
+        foreach (array_values($data['rooms'] ?? []) as $i => $row) {
+            $pricing = $package->pricings->firstWhere('id', (int) ($row['package_pricing_id'] ?? 0));
+            if (! $pricing) {
+                continue;
+            }
+
+            $capacity = max(1, (int) $pricing->capacity);
+            $occupants = (int) ($row['adults'] ?? 0) + (int) ($row['children'] ?? 0) + (int) ($row['seniors'] ?? 0);
+
+            if ($occupants > $capacity) {
+                throw ValidationException::withMessages([
+                    "rooms.{$i}" => $pricing->tier_name . ' holds at most ' . $capacity . ' pax — you entered '
+                        . $occupants . '. Remove some, or add another room line.'
+                        . ' (Infants are not counted; they share a bed.)',
+                ]);
+            }
+        }
     }
 
     /** Total travellers in a booking request — summed across room lines when present. */
@@ -190,10 +223,11 @@ class BookingService
             $package = Package::findOrFail($data['package_id']);
             $pricing = $package->pricings()->find($data['package_pricing_id'] ?? null) ?? $package->defaultPricing();
 
-            // A departure fixes the travel date — never let the two disagree.
+            // A departure fixes both dates — never let them disagree with the schedule.
             $departure = ! empty($data['package_date_id']) ? $package->dates()->find($data['package_date_id']) : null;
             if ($departure) {
                 $data['travel_date'] = $departure->depart_date;
+                $data['return_date'] = $departure->return_date;
             }
 
             // A booking may span several room types, each with its own per-pax rate.
@@ -240,6 +274,7 @@ class BookingService
                 'type'               => $data['type'] ?? 'online',
                 'status'             => $status,
                 'travel_date'        => $data['travel_date'] ?? null,
+                'return_date'        => $data['return_date'] ?? null,
                 'pickup_location'    => $data['pickup_location'] ?? null,
                 'arrival_time'       => $data['arrival_time'] ?? null,
                 'adults'             => $adults,

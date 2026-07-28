@@ -117,6 +117,10 @@
         @if ($booking->notes)
           <div class="mt-3 p-2 bg-light rounded small"><strong>Notes:</strong> {{ $booking->notes }}</div>
         @endif
+        {{-- The agent writes this for staff, so it has to surface here or the field is write-only. --}}
+        @if ($booking->agent_note)
+          <div class="mt-2 p-2 bg-warning bg-opacity-10 rounded small"><strong>Agent note:</strong> {{ $booking->agent_note }}</div>
+        @endif
         @if ($booking->provider_note)
           <div class="mt-2 p-2 bg-primary bg-opacity-10 rounded small"><strong>Provider note:</strong> {{ $booking->provider_note }}</div>
         @endif

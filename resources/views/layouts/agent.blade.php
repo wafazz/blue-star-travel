@@ -31,6 +31,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .card{background:var(--card);border-radius:18px;box-shadow:var(--shadow);padding:16px;margin-bottom:14px}
 .card h3{font-size:14px;font-weight:800;margin-bottom:12px}
 .lbl{font-size:12px;font-weight:700;color:var(--muted);margin-bottom:5px;display:block}
+/* Marks a field the agent has to fill before the form will submit. */
+.req{color:var(--danger);font-weight:800}
 .inp,select.inp,textarea.inp{width:100%;border:1.5px solid #e3e9f5;border-radius:12px;padding:11px 13px;font-size:14px;
   font-family:inherit;color:var(--ink);background:#fff;margin-bottom:12px}
 .inp:focus{outline:none;border-color:var(--blue)}

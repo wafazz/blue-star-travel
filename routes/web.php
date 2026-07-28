@@ -114,6 +114,8 @@ Route::middleware(['auth', 'role:agent'])->prefix('agent')->name('agent.')->grou
     Route::post('/bookings', [AgentBooking::class, 'store'])->name('bookings.store');
     Route::get('/bookings/{booking}', [AgentBooking::class, 'show'])->name('bookings.show');
     Route::post('/bookings/{booking}/payment', [AgentBooking::class, 'uploadPayment'])->name('bookings.payment');
+    // A free-text line to admin, kept apart from the customer's special requests.
+    Route::post('/bookings/{booking}/note', [AgentBooking::class, 'saveNote'])->name('bookings.note');
 
     // Revision loop — editable in `draft` + `needs_revision` only (Planning §13.8 Q1).
     Route::get('/bookings/{booking}/edit', [AgentBooking::class, 'edit'])->name('bookings.edit');

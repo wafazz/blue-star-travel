@@ -53,38 +53,176 @@
       @endif
     </div>
 
+    @php
+      $deposit = $booking->originalDeposit();
+      $canPay  = ! in_array($booking->status, ['cancelled', 'rejected', 'refunded']);
+    @endphp
+
     <div class="card">
-      <h3>Payment</h3>
-      <div class="sum"><span style="color:var(--muted)">Total</span><span style="font-weight:800">RM {{ number_format($booking->total_amount, 2) }}</span></div>
-      <div class="sum"><span style="color:var(--muted)">Paid</span><span style="font-weight:700;color:var(--ok)">RM {{ number_format($booking->paid_amount, 2) }}</span></div>
-      @if ($booking->forfeited_amount > 0)
-        <div class="sum"><span style="color:var(--muted)">Cancellation charge ({{ $booking->forfeited_packs }} pack)</span><span style="font-weight:700;color:var(--danger)">− RM {{ number_format($booking->forfeited_amount, 2) }}</span></div>
+      <h3>Payment Information</h3>
+      @if ($deposit)
+        <div style="background:#f6f8fd;border-radius:13px;padding:13px;display:flex;gap:14px;flex-wrap:wrap">
+          <div style="flex:1 1 130px">
+            <div class="m" style="font-size:11.5px;color:var(--muted)">Original Deposit Paid</div>
+            <div style="font-size:21px;font-weight:800;margin:3px 0 6px">RM {{ number_format($deposit->amount, 2) }}</div>
+            <span class="badge b-{{ $deposit->statusBadge() }}">{{ $deposit->statusLabel() }}</span>
+          </div>
+          <div style="flex:1 1 130px">
+            <div class="m" style="font-size:11.5px;color:var(--muted)">Payment Method</div>
+            <div style="font-weight:700;font-size:13px;margin-bottom:8px">{{ $deposit->methodLabel() }}</div>
+            <div class="m" style="font-size:11.5px;color:var(--muted)">Reference</div>
+            <div style="font-weight:700;font-size:13px">{{ $deposit->reference ?: '—' }}</div>
+          </div>
+        </div>
+      @else
+        <div class="m" style="font-size:12px">No payment recorded on this booking yet.</div>
       @endif
-      <div class="sum total" style="font-size:15px"><span>Balance</span><span style="color:{{ $booking->balance() > 0 ? 'var(--danger)' : 'var(--ok)' }}">RM {{ number_format(max(0, $booking->balance()), 2) }}</span></div>
+    </div>
+
+    @if ($canPay)
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div style="display:flex;gap:10px;align-items:center">
+            <span style="width:32px;height:32px;border-radius:10px;background:#e6f0ff;color:var(--blue);display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:800">＋</span>
+            <div>
+              <h3 style="margin:0">Add Deposit</h3>
+              <div class="m" style="font-size:11.5px;color:var(--muted)">Record a new deposit payment</div>
+            </div>
+          </div>
+          <button type="button" id="depToggle" onclick="toggleDeposit()"
+                  style="border:none;width:36px;height:36px;border-radius:50%;background:var(--blue);color:#fff;font-size:19px;font-weight:800">＋</button>
+        </div>
+
+        {{-- Stays open after a validation bounce, otherwise the errors point at a hidden form. --}}
+        <div id="depForm" style="display:{{ $errors->any() && old('amount') !== null ? '' : 'none' }};margin-top:14px">
+          <form method="POST" action="{{ route('agent.bookings.payment', $booking) }}" enctype="multipart/form-data">
+            @csrf
+            <div class="row2">
+              <div>
+                {{-- Left blank on purpose: an instalment is rarely the whole balance, and a
+                     pre-filled figure gets submitted unread. The agent types what they took. --}}
+                <label class="lbl">Amount (RM)</label>
+                <input type="number" name="amount" step="0.01" min="0.01" value="{{ old('amount') }}" class="inp"
+                       placeholder="Enter amount" required>
+              </div>
+              <div>
+                <label class="lbl">Payment Method</label>
+                {{-- This form IS the bank-transfer path, so it may not default to FPX (first option). --}}
+                <select name="method" class="inp">
+                  @foreach (\App\Models\Payment::METHODS as $k => $label)
+                    <option value="{{ $k }}" @selected(old('method', 'slip_upload') === $k)>{{ $label }}</option>
+                  @endforeach
+                </select>
+              </div>
+            </div>
+            <label class="lbl">Reference</label>
+            <input type="text" name="reference" value="{{ old('reference') }}" class="inp" placeholder="e.g. Bank reference, Cash, Office">
+            <label class="lbl">Upload Receipt</label>
+            <input type="file" name="slip" accept="image/*" class="inp" required>
+            <div class="row2" style="margin-top:4px">
+              <button type="button" class="btn ghost" onclick="toggleDeposit()">Cancel</button>
+              <button class="btn">Save Deposit</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    @endif
+
+    <div class="card" id="deposit-summary">
+      <div style="display:flex;gap:10px;align-items:center;margin-bottom:12px">
+        <span style="width:28px;height:28px;border-radius:9px;background:#e6f0ff;color:var(--blue);display:flex;align-items:center;justify-content:center;font-weight:800">≡</span>
+        <div style="flex:1">
+          <h3 style="margin:0">Deposit Summary</h3>
+          <div class="m" style="font-size:11.5px;color:var(--muted)">All deposits made for this booking</div>
+        </div>
+        {{-- These figures move when STAFF verify a slip, so the agent needs to pull the latest.
+             It reloads rather than linking to the same URL — a link whose only difference is
+             the #fragment just scrolls, it never re-requests the page. --}}
+        <a href="{{ route('agent.bookings.show', $booking) }}" title="Refresh totals" id="depRefresh"
+           onclick="event.preventDefault(); this.textContent='⏳'; location.reload()"
+           style="width:34px;height:34px;border-radius:50%;background:#eef2fb;color:var(--blue);display:flex;
+                  align-items:center;justify-content:center;font-size:16px;font-weight:800;text-decoration:none">↻</a>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:9px">
+        @foreach ([
+          ['Original Deposit', $deposit->amount ?? 0, 'var(--ink)', '#f6f8fd'],
+          ['Additional Deposits', $booking->additionalDepositsTotal(), 'var(--ok)', '#f1fbf5'],
+          ['Total Paid', $booking->recordedTotal(), 'var(--blue)', '#eef4ff'],
+          ['Outstanding Balance', $booking->outstandingRecorded(), '#e07a1f', '#fff7ed'],
+        ] as [$label, $value, $colour, $bg])
+          <div style="background:{{ $bg }};border:1px solid var(--line);border-radius:13px;padding:11px;text-align:center">
+            <div class="m" style="font-size:10.5px;color:var(--muted);line-height:1.3">{{ $label }}</div>
+            <div style="font-weight:800;font-size:15px;color:{{ $colour }};margin-top:4px">RM {{ number_format($value, 2) }}</div>
+          </div>
+        @endforeach
+      </div>
+
+      {{-- Recorded ≠ verified: the tiles count what was filed, the booking's paid figure
+           only moves once staff check the slip. Saying so avoids "I already paid" disputes. --}}
+      @if ($booking->pendingVerificationTotal() > 0)
+        <div class="m" style="font-size:11.5px;color:var(--muted);margin-top:10px;line-height:1.5">
+          RM {{ number_format($booking->pendingVerificationTotal(), 2) }} is still awaiting staff verification —
+          only RM {{ number_format($booking->paid_amount, 2) }} has been confirmed so far.
+        </div>
+      @endif
+      @if ($booking->forfeited_amount > 0)
+        <div class="sum" style="margin-top:10px"><span style="color:var(--muted)">Cancellation charge ({{ $booking->forfeited_packs }} pack)</span><span style="font-weight:700;color:var(--danger)">− RM {{ number_format($booking->forfeited_amount, 2) }}</span></div>
+      @endif
       @if ($booking->refundableAmount() > 0)
         <div class="sum"><span style="color:var(--muted)">Refundable</span><span style="font-weight:700;color:var(--ok)">RM {{ number_format($booking->refundableAmount(), 2) }}</span></div>
       @endif
+    </div>
 
-      @if ($booking->balance() > 0 && ! in_array($booking->status, ['cancelled', 'rejected']))
-        <form method="POST" action="{{ route('gateway.initiate', $booking) }}" style="margin-top:12px">
-          @csrf
-          <input type="hidden" name="amount" value="{{ number_format($booking->balance(), 2, '.', '') }}">
-          <button class="btn" style="background:linear-gradient(135deg,#16b364,#0e9455)">⚡ Pay Balance via FPX</button>
-        </form>
-        <div style="text-align:center;color:var(--muted);font-size:11px;margin:12px 0 6px">— or upload a bank transfer slip —</div>
-        <form method="POST" action="{{ route('agent.bookings.payment', $booking) }}" enctype="multipart/form-data">
-          @csrf
-          <label class="lbl">Amount (RM)</label>
-          <input type="number" name="amount" step="0.01" min="0.01" value="{{ number_format($booking->balance(), 2, '.', '') }}" class="inp" required>
-          <label class="lbl">Method</label>
-          <select name="method" class="inp">@foreach (\App\Models\Payment::METHODS as $k => $label)<option value="{{ $k }}">{{ $label }}</option>@endforeach</select>
-          <label class="lbl">Reference (optional)</label>
-          <input type="text" name="reference" class="inp">
-          <label class="lbl">Payment slip</label>
-          <input type="file" name="slip" accept="image/*" class="inp" required>
-          <button class="btn ok">Upload Payment Slip</button>
-        </form>
-      @endif
+    @if ($booking->payments->isNotEmpty())
+      <div class="card">
+        <h3>Payment History</h3>
+        <div style="overflow-x:auto">
+          <table style="width:100%;border-collapse:collapse;font-size:11.5px">
+            <thead>
+              <tr style="color:var(--muted);text-align:left">
+                <th style="padding:7px 6px;font-weight:700">Date</th>
+                <th style="padding:7px 6px;font-weight:700">Amount</th>
+                <th style="padding:7px 6px;font-weight:700">Method</th>
+                <th style="padding:7px 6px;font-weight:700">Reference</th>
+                <th style="padding:7px 6px;font-weight:700;text-align:right">Receipt</th>
+              </tr>
+            </thead>
+            <tbody>
+              @foreach ($booking->payments->sortByDesc('id') as $p)
+                <tr style="border-top:1px solid var(--line)">
+                  <td style="padding:9px 6px;white-space:nowrap">{{ optional($p->paid_at ?? $p->created_at)->format('d M Y') }}</td>
+                  <td style="padding:9px 6px;font-weight:800;white-space:nowrap">
+                    RM {{ number_format($p->amount, 2) }}
+                    <div><span class="badge b-{{ $p->statusBadge() }}" style="font-size:9.5px;padding:2px 7px">{{ $p->statusLabel() }}</span></div>
+                  </td>
+                  <td style="padding:9px 6px"><span class="badge b-{{ $p->methodBadge() }}">{{ $p->methodShort() }}</span></td>
+                  <td style="padding:9px 6px;color:var(--muted)">{{ $p->reference ?: '—' }}</td>
+                  <td style="padding:9px 4px;text-align:right">
+                    @if ($p->slip_path)
+                      <a href="{{ route('payments.slip', $p) }}" target="_blank" style="color:var(--blue);font-weight:800">View</a>
+                    @else
+                      <span style="color:var(--muted)">—</span>
+                    @endif
+                  </td>
+                </tr>
+              @endforeach
+            </tbody>
+          </table>
+        </div>
+      </div>
+    @endif
+
+    <div class="card">
+      <div style="display:flex;gap:10px;align-items:center;margin-bottom:10px">
+        <span style="width:28px;height:28px;border-radius:9px;background:#efe9ff;color:#6b3df5;display:flex;align-items:center;justify-content:center;font-weight:800">✎</span>
+        <h3 style="margin:0">Agent Note</h3>
+      </div>
+      <form method="POST" action="{{ route('agent.bookings.note', $booking) }}">
+        @csrf
+        <textarea name="agent_note" rows="3" class="inp" placeholder="Anything admin should know…">{{ old('agent_note', $booking->agent_note) }}</textarea>
+        <button class="btn ghost" style="margin-top:2px">Save Note</button>
+      </form>
     </div>
 
     @if ($booking->documents->isNotEmpty())
@@ -190,6 +328,16 @@
         </form>
       </div>
     @endif
+
+    <script>
+      function toggleDeposit() {
+        const box = document.getElementById('depForm');
+        const open = box.style.display === 'none';
+        box.style.display = open ? '' : 'none';
+        document.getElementById('depToggle').textContent = open ? '−' : '＋';
+        if (open) box.querySelector('input[name=amount]').focus();
+      }
+    </script>
 
     <div class="card">
       <h3>Timeline</h3>
