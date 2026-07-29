@@ -73,10 +73,11 @@
       </div>
     @endif
 
-    @if ($booking->documents->isNotEmpty())
+    @php($portalDocs = $booking->shareableDocuments())
+    @if ($portalDocs->isNotEmpty())
       <div class="card">
         <h3>My Documents</h3>
-        @foreach ($booking->documents as $doc)
+        @foreach ($portalDocs as $doc)
           <a class="brow" href="{{ route('documents.download.portal', $doc) }}"><div class="n">📄 {{ $doc->typeLabel() }}</div><span class="badge b-info">PDF</span></a>
         @endforeach
       </div>

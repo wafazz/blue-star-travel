@@ -4,6 +4,7 @@
 @section('heading', 'Booking ' . $booking->booking_no)
 
 @section('content')
+  @php($resortInvoice = $booking->resortInvoice())
   <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3">
     <div class="d-flex align-items-center gap-2">
       <a href="{{ route('manage.bookings.index') }}" class="btn btn-sm btn-outline-secondary">← Back</a>
@@ -18,7 +19,10 @@
         <form method="POST" action="{{ route('manage.bookings.submit', $booking) }}">@csrf<button class="btn btn-sm btn-primary">✓ Verify & Send to Provider</button></form>
       @endif
       @if (in_array($booking->status, ['pending_verification', 'waiting_provider_confirmation']))
-        <form method="POST" action="{{ route('manage.bookings.confirm', $booking) }}">@csrf<button class="btn btn-sm btn-success">✔ Confirm Booking</button></form>
+        <form method="POST" action="{{ route('manage.bookings.confirm', $booking) }}">@csrf
+          <button class="btn btn-sm btn-success" @disabled(! $resortInvoice)
+            title="{{ $resortInvoice ? '' : 'Upload the resort invoice first' }}">✔ Confirm Booking</button>
+        </form>
         <button class="btn btn-sm btn-outline-warning" data-bs-toggle="modal" data-bs-target="#revisionModal">📝 Request Revision</button>
         <button class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#rejectModal">✕ Reject</button>
       @endif
@@ -29,6 +33,45 @@
         <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#cancelModal">Cancel</button>
       @endif
     </div>
+  </div>
+
+  {{-- Internal only. Never rendered in the agent, provider or customer portals. --}}
+  <div class="card p-3 p-lg-4 mb-3 border-warning-subtle">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+      <h6 class="fw-bold mb-0">🏨 Resort Invoice <span class="badge text-bg-warning ms-1">Internal — admin only</span></h6>
+      @if ($resortInvoice)
+        <span class="badge text-bg-success">Uploaded</span>
+      @else
+        <span class="badge text-bg-secondary">Not uploaded</span>
+      @endif
+    </div>
+    <p class="small text-secondary mb-3">
+      The invoice the resort issued to Blue Star. Required before the booking can be confirmed.
+      It is stored on the private disk and is not visible to agents or customers.
+    </p>
+
+    @if ($resortInvoice)
+      <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+        <a href="{{ route('documents.download', $resortInvoice) }}" class="btn btn-sm btn-outline-secondary">📄 {{ $resortInvoice->title }}</a>
+        <span class="small text-secondary">Uploaded {{ $resortInvoice->updated_at->format('d M Y, H:i') }}</span>
+      </div>
+    @endif
+
+    <form method="POST" action="{{ route('manage.bookings.resort-invoice', $booking) }}" enctype="multipart/form-data" class="row g-2 align-items-end">
+      @csrf
+      <div class="col-md-5">
+        <label class="form-label small fw-semibold">{{ $resortInvoice ? 'Replace file' : 'Invoice file' }} <span class="text-danger">*</span></label>
+        <input type="file" name="resort_invoice" accept=".pdf,.jpg,.jpeg,.png" class="form-control form-control-sm @error('resort_invoice') is-invalid @enderror" required>
+        <div class="form-text">PDF or image, max 8 MB.</div>
+      </div>
+      <div class="col-md-5">
+        <label class="form-label small fw-semibold">Internal note</label>
+        <input type="text" name="note" value="{{ old('note') }}" maxlength="255" class="form-control form-control-sm" placeholder="Optional — e.g. invoice no. / amount billed">
+      </div>
+      <div class="col-md-2">
+        <button class="btn btn-sm btn-primary w-100">{{ $resortInvoice ? 'Replace' : 'Upload' }}</button>
+      </div>
+    </form>
   </div>
 
   <div class="row g-3">
@@ -285,7 +328,10 @@
           @else
             <div class="d-flex flex-wrap gap-2">
               @foreach ($booking->documents as $doc)
-                <a href="{{ route('documents.download', $doc) }}" class="btn btn-sm btn-outline-secondary">📄 {{ $doc->typeLabel() }}</a>
+                <a href="{{ route('documents.download', $doc) }}" class="btn btn-sm btn-outline-secondary">
+                  📄 {{ $doc->typeLabel() }}
+                  @if ($doc->isInternal())<span class="badge text-bg-warning ms-1">Internal</span>@endif
+                </a>
               @endforeach
             </div>
           @endif

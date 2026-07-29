@@ -423,4 +423,15 @@ class Booking extends Model
     {
         return $this->documents->firstWhere('type', $type);
     }
+
+    /** Everything the agent / customer / provider portals are allowed to list. */
+    public function shareableDocuments()
+    {
+        return $this->documents->reject(fn ($doc) => $doc->isInternal())->values();
+    }
+
+    public function resortInvoice(): ?BookingDocument
+    {
+        return $this->document('resort_invoice');
+    }
 }

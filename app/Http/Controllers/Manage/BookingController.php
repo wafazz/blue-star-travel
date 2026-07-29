@@ -13,6 +13,7 @@ use App\Models\Payment;
 use App\Models\User;
 use App\Services\BookingService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class BookingController extends Controller
 {
@@ -84,9 +85,53 @@ class BookingController extends Controller
     public function confirm(Booking $booking, Request $request)
     {
         abort_unless(in_array($booking->status, ['pending_verification', 'waiting_provider_confirmation']), 403);
+
+        // The resort invoice is what proves the resort side is actually booked and priced.
+        // The button ships disabled without one, but a disabled button is a courtesy.
+        if (! $booking->documents()->where('type', 'resort_invoice')->exists()) {
+            return back()->withErrors(['resort_invoice' => 'Upload the resort invoice before confirming this booking.']);
+        }
+
         $this->bookings->confirm($booking, $request->user());
 
         return back()->with('ok', 'Booking confirmed. Invoice & travel voucher generated.');
+    }
+
+    /**
+     * Internal paperwork — the file lands on the private disk and is listed on /manage only.
+     * See BookingDocument::INTERNAL_TYPES; agents must never see what the resort charges.
+     */
+    public function uploadResortInvoice(Booking $booking, Request $request)
+    {
+        $data = $request->validate([
+            'resort_invoice' => ['required', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:8192'],
+            'note'           => ['nullable', 'string', 'max:255'],
+        ], [
+            'resort_invoice.required' => 'Attach the resort invoice.',
+            'resort_invoice.mimes'    => 'The resort invoice must be a PDF or an image.',
+        ]);
+
+        $path = $request->file('resort_invoice')->store("booking-docs/{$booking->id}", 'local');
+        $existing = $booking->documents()->where('type', 'resort_invoice')->first();
+
+        if ($existing) {
+            Storage::disk('local')->delete($existing->file_path);
+            $existing->update([
+                'file_path'   => $path,
+                'uploaded_by' => $request->user()->id,
+            ]);
+        } else {
+            $booking->documents()->create([
+                'type'        => 'resort_invoice',
+                'title'       => 'Resort-Invoice-' . $booking->booking_no,
+                'file_path'   => $path,
+                'uploaded_by' => $request->user()->id,
+            ]);
+        }
+
+        $this->bookings->log($booking, $request->user(), $existing ? 'Resort invoice replaced' : 'Resort invoice uploaded', $data['note'] ?? null);
+
+        return back()->with('ok', 'Resort invoice saved. Internal only — agents cannot see it.');
     }
 
     public function version(Booking $booking, BookingVersion $version)

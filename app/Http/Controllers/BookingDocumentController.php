@@ -14,9 +14,14 @@ class BookingDocumentController extends Controller
     {
         $document->load('booking');
         abort_unless($this->canSee($document->booking, $request), 403);
+        // Internal paperwork is staff-only even for the agent who owns the booking.
+        abort_if($document->isInternal() && ! $request->user()->isStaff(), 403);
         abort_unless(Storage::disk('local')->exists($document->file_path), 404);
 
-        return Storage::disk('local')->download($document->file_path, $document->title . '.pdf');
+        // Uploaded documents may be images, so the extension comes off the stored file.
+        $ext = pathinfo($document->file_path, PATHINFO_EXTENSION) ?: 'pdf';
+
+        return Storage::disk('local')->download($document->file_path, $document->title . '.' . $ext);
     }
 
     /** Payment slips hold personal banking data — same ownership rules as documents. */
