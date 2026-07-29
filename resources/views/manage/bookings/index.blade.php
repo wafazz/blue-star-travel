@@ -4,6 +4,18 @@
 @section('heading', 'Bookings')
 
 @section('content')
+  {{-- An amendment sits on a booking that already looks Confirmed, so nothing in the
+       status column would ever say it is waiting on staff. This is that alert. --}}
+  @if ($counts['pending_amendment'] > 0 && request('needs') !== 'amendment')
+    <div class="alert alert-warning d-flex flex-wrap justify-content-between align-items-center gap-2">
+      <div>
+        ⚠ <strong>{{ $counts['pending_amendment'] }} amendment request{{ $counts['pending_amendment'] === 1 ? '' : 's' }}</strong>
+        awaiting your approval — date changes and postponements do not move until you approve them.
+      </div>
+      <a href="{{ route('manage.bookings.index', ['needs' => 'amendment']) }}" class="btn btn-sm btn-warning">Review now</a>
+    </div>
+  @endif
+
   <div class="row g-3 mb-3">
     <div class="col-6 col-lg">
       <a href="{{ route('manage.bookings.index', ['status' => 'pending_verification']) }}" class="text-decoration-none">
@@ -31,6 +43,14 @@
       </a>
     </div>
     <div class="col-6 col-lg">
+      <a href="{{ route('manage.bookings.index', ['needs' => 'amendment']) }}" class="text-decoration-none">
+        <div class="card p-3 {{ $counts['pending_amendment'] > 0 ? 'border-warning' : '' }}">
+          <div class="fs-4 fw-bold text-warning">{{ $counts['pending_amendment'] }}</div>
+          <div class="text-secondary small">Amendments to Review</div>
+        </div>
+      </a>
+    </div>
+    <div class="col-6 col-lg">
       <a href="{{ route('manage.bookings.index') }}" class="text-decoration-none">
         <div class="card p-3"><div class="fs-4 fw-bold">All</div><div class="text-secondary small">Clear filters</div></div>
       </a>
@@ -38,7 +58,14 @@
   </div>
 
   <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3">
-    <form class="d-flex flex-wrap gap-2" method="GET">
+    <form class="d-flex flex-wrap gap-2 align-items-center" method="GET">
+      {{-- Searching inside the amendment queue must not silently drop the queue. --}}
+      @if (request('needs') === 'amendment')
+        <input type="hidden" name="needs" value="amendment">
+        <span class="badge text-bg-warning">⚠ Awaiting approval
+          <a href="{{ route('manage.bookings.index') }}" class="text-dark text-decoration-none ms-1">✕</a>
+        </span>
+      @endif
       <input type="text" name="q" value="{{ request('q') }}" class="form-control form-control-sm" placeholder="Search booking # / customer…" style="min-width:220px">
       <select name="status" class="form-select form-select-sm" style="width:auto" onchange="this.form.submit()">
         <option value="">Any status</option>
@@ -69,7 +96,7 @@
         </thead>
         <tbody>
           @forelse ($bookings as $booking)
-            <tr>
+            <tr class="{{ $booking->pending_amendments_count ? 'table-warning' : '' }}">
               <td class="fw-semibold">{{ $booking->booking_no }}</td>
               <td class="small">{{ $booking->package?->title ?? '—' }}</td>
               <td class="small">{{ $booking->customer?->name ?? '—' }}</td>
@@ -77,7 +104,12 @@
               <td class="small">{{ optional($booking->travel_date)->format('d M Y') ?? '—' }}</td>
               <td class="text-end">RM {{ number_format($booking->total_amount, 2) }}</td>
               <td class="text-end {{ $booking->balance() > 0 ? 'text-danger' : 'text-success' }}">RM {{ number_format($booking->balance(), 2) }}</td>
-              <td><span class="badge text-bg-{{ $booking->statusBadge() }}">{{ $booking->statusLabel() }}</span></td>
+              <td>
+                <span class="badge text-bg-{{ $booking->statusBadge() }}">{{ $booking->statusLabel() }}</span>
+                @if ($booking->pending_amendments_count)
+                  <span class="badge text-bg-warning d-block mt-1" title="An amendment request is waiting for approval">⚠ Needs approval</span>
+                @endif
+              </td>
               <td class="text-end"><a href="{{ route('manage.bookings.show', $booking) }}" class="btn btn-sm btn-outline-primary">Open</a></td>
             </tr>
           @empty

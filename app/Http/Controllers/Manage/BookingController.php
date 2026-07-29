@@ -21,7 +21,9 @@ class BookingController extends Controller
 
     public function index(Request $request)
     {
-        $query = Booking::query()->with('package', 'customer', 'agent');
+        $query = Booking::query()->with('package', 'customer', 'agent')
+            // Drives the ⚠ flag on every row — one aggregate, not a query per booking.
+            ->withCount(['amendments as pending_amendments_count' => fn ($q) => $q->where('status', 'pending')]);
 
         if ($search = trim((string) $request->get('q'))) {
             $query->where(function ($w) use ($search) {
@@ -32,6 +34,10 @@ class BookingController extends Controller
         if ($status = $request->get('status')) {
             $query->where('status', $status);
         }
+        // Cuts across status: an amendment can be pending on a confirmed or a postponed booking.
+        if ($request->get('needs') === 'amendment') {
+            $query->whereHas('amendments', fn ($a) => $a->where('status', 'pending'));
+        }
 
         $bookings = $query->latest()->paginate(12)->withQueryString();
 
@@ -41,6 +47,7 @@ class BookingController extends Controller
             'waiting_provider_confirmation' => Booking::where('status', 'waiting_provider_confirmation')->count(),
             'confirmed'                     => Booking::where('status', 'confirmed')->count(),
             'postponed'                     => Booking::where('status', 'postponed')->count(),
+            'pending_amendment'             => Booking::whereHas('amendments', fn ($a) => $a->where('status', 'pending'))->count(),
         ];
 
         return view('manage.bookings.index', compact('bookings', 'counts'));

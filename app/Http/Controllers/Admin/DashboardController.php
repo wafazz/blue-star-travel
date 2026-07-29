@@ -17,6 +17,8 @@ class DashboardController extends Controller
             ['Pending Bookings', number_format(Booking::where('status', 'pending_verification')->count()), '⏳', 'warning', route('manage.bookings.index', ['status' => 'pending_verification'])],
             ['Pending Payments', number_format(Payment::where('status', 'pending')->count()), '💳', 'danger', route('manage.payments.index')],
             ['Pending Provider Confirmations', number_format(Booking::where('status', 'waiting_provider_confirmation')->count()), '🤝', 'info', route('manage.bookings.index', ['status' => 'waiting_provider_confirmation'])],
+            // Sits on a booking that already reads Confirmed, so it needs its own card.
+            ['Amendments to Review', number_format(Booking::whereHas('amendments', fn ($a) => $a->where('status', 'pending'))->count()), '📝', 'warning', route('manage.bookings.index', ['needs' => 'amendment'])],
             ["Today's Bookings", number_format(Booking::whereDate('created_at', today())->count()), '📋', 'primary', route('manage.bookings.index')],
             ["Today's Revenue", 'RM ' . number_format($todayRevenue, 2), '💰', 'success', route('manage.finance.dashboard')],
             ['Open Tickets', number_format(Ticket::whereIn('status', ['open', 'pending'])->count()), '🎧', 'secondary', route('manage.tickets.index')],
