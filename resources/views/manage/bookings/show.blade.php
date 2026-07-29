@@ -60,9 +60,13 @@
     <form method="POST" action="{{ route('manage.bookings.resort-invoice', $booking) }}" enctype="multipart/form-data" class="row g-2 align-items-end">
       @csrf
       <div class="col-md-5">
-        <label class="form-label small fw-semibold">{{ $resortInvoice ? 'Replace file' : 'Invoice file' }} <span class="text-danger">*</span></label>
+        {{-- The hint rides in the label, not a .form-text below — the row is align-items-end,
+             so an extra line under one input pushes that whole column off the others. --}}
+        <label class="form-label small fw-semibold d-flex justify-content-between gap-2">
+          <span>{{ $resortInvoice ? 'Replace file' : 'Invoice file' }} <span class="text-danger">*</span></span>
+          <span class="fw-normal text-secondary">PDF or image, max 8 MB</span>
+        </label>
         <input type="file" name="resort_invoice" accept=".pdf,.jpg,.jpeg,.png" class="form-control form-control-sm @error('resort_invoice') is-invalid @enderror" required>
-        <div class="form-text">PDF or image, max 8 MB.</div>
       </div>
       <div class="col-md-5">
         <label class="form-label small fw-semibold">Internal note</label>
