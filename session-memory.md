@@ -20,6 +20,7 @@
 - [✔] Phase 8: Customer Portal — register (+referral `?ref=`), public package catalog, self-service booking, FPX/slip payment, my-trips + documents, passport profile, customer support tickets. Demo state now fully seeded (ShowcaseSeeder + CustomerPortalSeeder).
 - [✔] Phase 9: Hardening — security audit (2 CRITICAL, 2 HIGH, 3 MED, 2 LOW — all fixed & re-tested), HQ + Admin dashboards wired to real data, DEPLOY.md, .env.example.
 - [✔] Resort invoice (2026-07-29) — admin-only upload section on the staff booking screen, gates Confirm; invisible to agents/customers/providers.
+- [✔] "Needs approval" alerts on /manage/bookings (2026-07-29) — banner + tile + row flag + `?needs=amendment` queue; also an admin dashboard card. Browser-verified end to end.
 - [✔] Date-change evidence + Postponed status (2026-07-29) — a date amendment needs a supporting document; postponing parks the booking as `postponed` instead of silently going open-dated.
 
 ## Working Memory
