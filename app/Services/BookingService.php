@@ -548,7 +548,8 @@ class BookingService
      */
     public function requestAmendment(Booking $booking, ?User $actor, array $data): BookingAmendment
     {
-        if ($booking->status !== 'confirmed') {
+        // A postponed booking is amendable too — that is how it gets its new date back.
+        if (! $booking->isAmendable()) {
             throw ValidationException::withMessages([
                 'status' => 'Only a confirmed booking can be amended.',
             ]);
@@ -581,8 +582,9 @@ class BookingService
     private function amendmentCurrentValue(Booking $booking, string $type): ?string
     {
         return match ($type) {
-            'travel_date' => optional($booking->travel_date)->format('d M Y')
-                ?? optional($booking->packageDate?->depart_date)->format('d M Y'),
+            'travel_date' => $booking->isPostponed() ? 'Postponed — no date' :
+                (optional($booking->travel_date)->format('d M Y')
+                ?? optional($booking->packageDate?->depart_date)->format('d M Y')),
             'pickup' => trim(($booking->pickup_location ?? '—') . ' · '
                 . ($booking->arrival_time ? substr($booking->arrival_time, 0, 5) : '—')),
             default => null,
@@ -598,7 +600,7 @@ class BookingService
         DB::transaction(function () use ($amendment, $actor, $note) {
             $booking = Booking::whereKey($amendment->booking_id)->lockForUpdate()->first();
 
-            if ($amendment->status !== 'pending' || $booking?->status !== 'confirmed') {
+            if ($amendment->status !== 'pending' || ! $booking?->isAmendable()) {
                 throw ValidationException::withMessages([
                     'status' => 'This amendment can no longer be approved.',
                 ]);
@@ -661,6 +663,24 @@ class BookingService
         $oldDate = $booking->packageDate;
         $newDate = $amendment->packageDate;
 
+        // The customer is putting the trip off without naming a new date. It is NOT an
+        // open-dated booking — an open date is a property of the package, and treating it
+        // as one would leave the trip looking live and bookable with a blank date. The
+        // seats go back to the departure, the dates are cleared, and the booking parks in
+        // `postponed` until a later amendment brings a real date.
+        if ($amendment->isPostponement()) {
+            $oldDate?->decrement('seats_booked', min($booking->total_pax, $oldDate->seats_booked));
+
+            $booking->update([
+                'package_date_id' => null,
+                'travel_date'     => null,
+                'return_date'     => null,
+                'status'          => 'postponed',
+            ]);
+
+            return;
+        }
+
         if ($newDate) {
             // The booking already holds its own seats on the old departure, so its pax
             // must be added back before asking whether the new one has room — otherwise
@@ -684,6 +704,8 @@ class BookingService
         $booking->update([
             'package_date_id' => $newDate?->id ?? $booking->package_date_id,
             'travel_date'     => $newDate?->depart_date ?? $amendment->requested_date,
+            // A postponed trip that finally has a date is a confirmed trip again.
+            'status'          => $booking->isPostponed() ? 'confirmed' : $booking->status,
         ]);
     }
 

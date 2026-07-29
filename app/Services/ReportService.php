@@ -185,7 +185,7 @@ class ReportService
             ],
             'kpis' => [
                 ['label' => 'Bookings', 'value' => number_format($bookings->count()), 'icon' => '📋', 'tone' => 'primary'],
-                ['label' => 'Confirmed', 'value' => number_format($bookings->whereIn('status', ['confirmed', 'completed'])->count()), 'icon' => '✅', 'tone' => 'success'],
+                ['label' => 'Confirmed', 'value' => number_format($bookings->whereIn('status', Booking::SOLD_STATUSES)->count()), 'icon' => '✅', 'tone' => 'success'],
                 ['label' => 'Total Value', 'value' => 'RM ' . number_format((float) $live->sum('total_amount'), 2), 'icon' => '💵', 'tone' => 'info'],
                 ['label' => 'Total Pax', 'value' => number_format((int) $bookings->sum('total_pax')), 'icon' => '🧳', 'tone' => 'warning'],
             ],

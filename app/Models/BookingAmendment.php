@@ -10,8 +10,9 @@ class BookingAmendment extends Model
     protected $guarded = [];
 
     protected $casts = [
-        'requested_date' => 'date',
-        'reviewed_at'    => 'datetime',
+        'requested_date'  => 'date',
+        'reviewed_at'     => 'datetime',
+        'is_postponement' => 'boolean',
     ];
 
     const TYPES = [
@@ -60,5 +61,24 @@ class BookingAmendment extends Model
     public function isAutoApplied(): bool
     {
         return in_array($this->type, ['travel_date', 'pickup']);
+    }
+
+    /** A date change the customer has not dated yet. Approval parks the trip, not cancels it. */
+    public function isPostponement(): bool
+    {
+        return $this->type === 'travel_date' && $this->is_postponement;
+    }
+
+    /** What the agent asked for, for the "To" column on both review screens. */
+    public function requestedLabel(): string
+    {
+        if ($this->isPostponement()) {
+            return 'Postponed — no new date yet';
+        }
+
+        return optional($this->packageDate?->depart_date)->format('d M Y')
+            ?? optional($this->requested_date)->format('d M Y')
+            ?? $this->requested_pickup_location
+            ?? '—';
     }
 }

@@ -11,6 +11,8 @@ use App\Models\PackagePricing;
 use App\Models\User;
 use App\Services\BookingService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
@@ -28,6 +30,9 @@ class BookingAmendmentTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        // Every date-change request now carries an upload — without this the suite writes
+        // real files into storage/app/private on each run.
+        Storage::fake('local');
         $this->admin = User::factory()->create(['role' => 'admin', 'status' => 'active', 'permissions' => ['bookings']]);
         $this->agent = User::factory()->create(['role' => 'agent', 'status' => 'active']);
 
@@ -79,6 +84,8 @@ class BookingAmendmentTest extends TestCase
             'reason'                    => 'Customer requested a new travel date.',
             'requested_package_date_id' => $this->newDate->id,
             'requested_date'            => '2026-12-08',
+            // A date change is refused without evidence — see DateChangeEvidenceTest.
+            'attachment'                => UploadedFile::fake()->create('customer-request.pdf', 20, 'application/pdf'),
         ]);
     }
 

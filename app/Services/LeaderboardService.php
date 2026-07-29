@@ -21,7 +21,7 @@ class LeaderboardService
         $rows = Booking::query()
             ->selectRaw('agent_id, SUM(paid_amount) as sales, COUNT(*) as bookings')
             ->whereNotNull('agent_id')
-            ->whereIn('status', ['confirmed', 'completed'])
+            ->whereIn('status', Booking::SOLD_STATUSES)
             ->whereYear('created_at', $year)
             ->whereMonth('created_at', $month)
             ->groupBy('agent_id')

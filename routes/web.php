@@ -334,6 +334,8 @@ Route::middleware(['auth', 'role:super_admin,hq,admin'])->group(function () {
 // Booking document download (agent / provider / customer share the same controller)
 Route::middleware(['auth'])->get('my/documents/{document}/download', [BookingDocumentController::class, 'download'])->name('documents.download.portal');
 Route::middleware(['auth'])->get('payments/{payment}/slip', [BookingDocumentController::class, 'slip'])->name('payments.slip');
+// Date-change evidence — staff review it, the agent who filed it can re-check it.
+Route::middleware(['auth'])->get('amendments/{amendment}/attachment', [BookingDocumentController::class, 'amendmentAttachment'])->name('amendments.attachment');
 
 // Notification actions (any authenticated user)
 Route::middleware(['auth'])->group(function () {

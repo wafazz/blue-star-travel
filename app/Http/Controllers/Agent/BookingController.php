@@ -305,20 +305,46 @@ class BookingController extends Controller
     {
         abort_unless($booking->agent_id === $request->user()->id, 403);
 
+        $isDateChange = $request->input('type') === 'travel_date';
+        $isPostponement = $isDateChange && $request->boolean('is_postponement');
+
         $data = $request->validate([
             'type'                      => ['required', 'in:' . implode(',', array_keys(BookingAmendment::TYPES))],
             'reason'                    => ['required', 'string', 'max:1000'],
             // A date change needs one of the two: a free-typed date OR a scheduled
             // departure. The form offers both, so neither may be required on its own.
+            // A postponement supplies neither — that IS the request.
             'requested_date' => [
                 'nullable', 'date', 'after:today',
-                Rule::requiredIf(fn () => $request->input('type') === 'travel_date'
+                Rule::requiredIf(fn () => $isDateChange && ! $isPostponement
                     && ! $request->filled('requested_package_date_id')),
             ],
             'requested_package_date_id' => ['nullable', 'exists:package_dates,id'],
             'requested_pickup_location' => ['nullable', 'required_if:type,pickup', 'string', 'max:255'],
             'requested_arrival_time'    => ['nullable', 'date_format:H:i'],
+            // Client rule: a date change is not reviewable on the agent's word alone.
+            // Staff need the customer's message, medical note or whatever else explains it.
+            'attachment' => [
+                'nullable', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:8192',
+                Rule::requiredIf(fn () => $isDateChange),
+            ],
+        ], [
+            'attachment.required' => 'Attach the supporting document for the date change.',
+            'attachment.mimes'    => 'The supporting document must be a PDF or an image.',
         ]);
+
+        unset($data['attachment']);
+        $data['is_postponement'] = $isPostponement;
+
+        if ($isPostponement) {
+            // Belt and braces: a postponement carries no date, whatever the form posted.
+            $data['requested_date'] = null;
+            $data['requested_package_date_id'] = null;
+        }
+
+        if ($request->hasFile('attachment')) {
+            $data['attachment_path'] = $request->file('attachment')->store("amendment-docs/{$booking->id}", 'local');
+        }
 
         $this->bookings->requestAmendment($booking, $request->user(), $data);
 

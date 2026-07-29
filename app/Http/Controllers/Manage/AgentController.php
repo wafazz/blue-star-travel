@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Manage;
 
 use App\Http\Controllers\Controller;
+use App\Models\Booking;
 use App\Models\Commission;
 use App\Models\User;
 use App\Services\AgentTreeService;
@@ -22,7 +23,7 @@ class AgentController extends Controller
         $query = User::where('role', 'agent')
             ->with('wallet', 'referrer')
             ->withCount('referrals as direct_downlines')
-            ->withSum(['agentBookings as sales_total' => fn ($q) => $q->whereIn('status', ['confirmed', 'completed'])], 'total_amount');
+            ->withSum(['agentBookings as sales_total' => fn ($q) => $q->whereIn('status', Booking::SOLD_STATUSES)], 'total_amount');
 
         if ($search = trim((string) $request->get('q'))) {
             $query->where(function ($w) use ($search) {
@@ -131,7 +132,7 @@ class AgentController extends Controller
         $upline    = $this->tree->uplineChain($agent->id);
         $network   = $this->tree->downlineCount($agent->id);
         $bookings  = $agent->agentBookings()->with('customer', 'package')->latest()->limit(10)->get();
-        $salesTotal = (float) $agent->agentBookings()->whereIn('status', ['confirmed', 'completed'])->sum('total_amount');
+        $salesTotal = (float) $agent->agentBookings()->whereIn('status', Booking::SOLD_STATUSES)->sum('total_amount');
         $commissions = Commission::where('earner_id', $agent->id)->with('booking')->latest()->limit(10)->get();
         $commissionEarned = (float) Commission::where('earner_id', $agent->id)->whereIn('status', ['approved', 'paid'])->sum('amount');
 

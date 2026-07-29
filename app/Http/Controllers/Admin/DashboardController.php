@@ -31,7 +31,7 @@ class DashboardController extends Controller
             ->where('status', 'pending')->oldest()->limit(8)->get();
 
         $todayTravel = Booking::with('customer', 'package')
-            ->whereIn('status', ['confirmed', 'completed'])
+            ->whereIn('status', Booking::SOLD_STATUSES)
             ->whereDate('travel_date', today())->get();
 
         return view('admin.dashboard', compact('cards', 'queue', 'unverifiedPayments', 'todayTravel'));

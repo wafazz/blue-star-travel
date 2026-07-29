@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Achievement;
+use App\Models\Booking;
 use App\Models\Checkin;
 use App\Models\Mission;
 use App\Models\PointTransaction;
@@ -188,8 +189,8 @@ class GamificationService
         $v = (int) $ach->criteria_value;
 
         return match ($ach->criteria_type) {
-            'bookings_count'  => $user->agentBookings()->whereIn('status', ['confirmed', 'completed'])->count() >= $v,
-            'sales_total'     => (float) $user->agentBookings()->whereIn('status', ['confirmed', 'completed'])->sum('paid_amount') >= $v,
+            'bookings_count'  => $user->agentBookings()->whereIn('status', Booking::SOLD_STATUSES)->count() >= $v,
+            'sales_total'     => (float) $user->agentBookings()->whereIn('status', Booking::SOLD_STATUSES)->sum('paid_amount') >= $v,
             'customers_count' => \App\Models\Customer::where('agent_id', $user->id)->count() >= $v,
             'streak_days'     => (int) optional($user->streak)->longest >= $v,
             'referrals_count' => $this->tree->downlineCount($user->id) >= $v,

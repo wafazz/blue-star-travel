@@ -36,7 +36,7 @@ class DashboardController extends Controller
 
         $rankInfo = $this->leaderboard->rankOf($user);
 
-        $paidBookings = Booking::where('agent_id', $user->id)->whereIn('status', ['confirmed', 'completed']);
+        $paidBookings = Booking::where('agent_id', $user->id)->whereIn('status', Booking::SOLD_STATUSES);
 
         $achievedThisMonth = (float) (clone $paidBookings)->where('created_at', '>=', $monthStart)->sum('paid_amount');
         $salesTarget = (float) Setting::get('agent_sales_target', 10000);
@@ -78,7 +78,8 @@ class DashboardController extends Controller
             // Waits on the agent, not on staff — counted separately from everything else.
             'revision' => Booking::where('agent_id', $user->id)->where('status', 'needs_revision')->count(),
             'awaiting' => Booking::where('agent_id', $user->id)->where('status', 'waiting_provider_confirmation')->count(),
-            'unpaid'   => Booking::where('agent_id', $user->id)->whereIn('status', ['confirmed', 'pending_verification'])
+            // Postponed included — the trip lost its date, not its outstanding balance.
+            'unpaid'   => Booking::where('agent_id', $user->id)->whereIn('status', ['confirmed', 'postponed', 'pending_verification'])
                             ->whereColumn('paid_amount', '<', 'total_amount')->count(),
         ];
 

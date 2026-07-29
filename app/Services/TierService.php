@@ -96,7 +96,7 @@ class TierService
         $p = $period ?? $this->currentPeriod();
 
         return Booking::where('agent_id', $agent->id)
-            ->whereIn('status', ['confirmed', 'completed'])
+            ->whereIn('status', Booking::SOLD_STATUSES)
             ->whereBetween('created_at', [$p['start'], $p['end']])
             ->count();
     }

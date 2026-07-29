@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Booking;
+use App\Models\BookingAmendment;
 use App\Models\BookingDocument;
 use App\Models\Payment;
 use Illuminate\Http\Request;
@@ -22,6 +23,19 @@ class BookingDocumentController extends Controller
         $ext = pathinfo($document->file_path, PATHINFO_EXTENSION) ?: 'pdf';
 
         return Storage::disk('local')->download($document->file_path, $document->title . '.' . $ext);
+    }
+
+    /**
+     * The evidence the agent filed with a date-change request. Same ownership rules —
+     * staff review it, the agent who raised it can check what they sent.
+     */
+    public function amendmentAttachment(BookingAmendment $amendment, Request $request)
+    {
+        $amendment->load('booking');
+        abort_unless($this->canSee($amendment->booking, $request), 403);
+        abort_unless($amendment->attachment_path && Storage::disk('local')->exists($amendment->attachment_path), 404);
+
+        return Storage::disk('local')->response($amendment->attachment_path);
     }
 
     /** Payment slips hold personal banking data — same ownership rules as documents. */

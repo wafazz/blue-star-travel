@@ -235,7 +235,7 @@
       </div>
     @endif
 
-    @if ($booking->status === 'confirmed' || $booking->amendments->isNotEmpty())
+    @if ($booking->isAmendable() || $booking->amendments->isNotEmpty())
       <div class="card">
         <h3>Request Amendment</h3>
 
@@ -245,14 +245,17 @@
               <span style="font-size:11px">{{ $am->created_at->format('d M Y') }}</span></span>
             <span style="text-align:right">
               <span class="badge b-{{ $am->statusBadge() }}">{{ ucfirst($am->status) }}</span>
-              <div style="font-size:11.5px;color:var(--muted);margin-top:3px">{{ $am->requested_value ?? optional($am->requested_date)->format('d M Y') }}</div>
+              <div style="font-size:11.5px;color:var(--muted);margin-top:3px">{{ $am->requestedLabel() }}</div>
+              @if ($am->attachment_path)
+                <div style="font-size:11px;margin-top:2px"><a href="{{ route('amendments.attachment', $am) }}" target="_blank">📎 Supporting document</a></div>
+              @endif
               @if ($am->admin_note)<div style="font-size:11px;color:var(--muted)">“{{ $am->admin_note }}”</div>@endif
             </span>
           </div>
         @endforeach
 
-        @if ($booking->status === 'confirmed' && ! $booking->openAmendment)
-          <form method="POST" action="{{ route('agent.bookings.amendment', $booking) }}" style="margin-top:10px">
+        @if ($booking->isAmendable() && ! $booking->openAmendment)
+          <form method="POST" action="{{ route('agent.bookings.amendment', $booking) }}" enctype="multipart/form-data" style="margin-top:10px">
             @csrf
             <label class="lbl">Amendment type</label>
             <select name="type" id="amType" class="inp" onchange="amToggle()">
@@ -262,17 +265,40 @@
             </select>
 
             <div id="amDate">
-              <label class="lbl">Requested new date</label>
-              <input type="date" name="requested_date" class="inp" min="{{ now()->addDay()->format('Y-m-d') }}">
-              @if ($booking->package?->bookableDates()->isNotEmpty())
-                <label class="lbl">Or pick a scheduled departure</label>
-                <select name="requested_package_date_id" class="inp">
-                  <option value="">—</option>
-                  @foreach ($booking->package->bookableDates() as $d)
-                    <option value="{{ $d->id }}">{{ $d->depart_date?->format('d M Y') }}</option>
-                  @endforeach
-                </select>
-              @endif
+              {{-- Already postponed: the only useful request left is a real date. --}}
+              @unless ($booking->isPostponed())
+                <label class="lbl" style="display:flex;align-items:center;gap:7px">
+                  <input type="checkbox" name="is_postponement" value="1" id="amPostpone" onchange="amToggle()" style="width:auto;margin:0">
+                  <span>Postpone — customer has not picked a new date yet</span>
+                </label>
+              @endunless
+
+              <div id="amDateFields">
+                <label class="lbl">Requested new date</label>
+                <input type="date" name="requested_date" id="amNewDate" class="inp" min="{{ now()->addDay()->format('Y-m-d') }}">
+                @if ($booking->package?->bookableDates()->isNotEmpty())
+                  <label class="lbl">Or pick a scheduled departure</label>
+                  <select name="requested_package_date_id" id="amDeparture" class="inp">
+                    <option value="">—</option>
+                    @foreach ($booking->package->bookableDates() as $d)
+                      <option value="{{ $d->id }}">{{ $d->depart_date?->format('d M Y') }}</option>
+                    @endforeach
+                  </select>
+                @endif
+              </div>
+
+              <div id="amPostponeNote" class="m" style="font-size:11.5px;display:none">
+                The trip goes on hold as <b>Postponed</b> — seats are released and no travel date is
+                shown until you send a new one. Nothing is cancelled and nothing is refunded.
+              </div>
+
+              {{-- Client rule: a date change is not reviewable on the agent's word alone. --}}
+              <label class="lbl">Supporting document <span style="color:var(--danger)">*</span></label>
+              <input type="file" name="attachment" id="amFile" class="inp" accept=".pdf,.jpg,.jpeg,.png">
+              <div class="m" style="font-size:11px">
+                Required for a date change — the customer's message, medical note or letter
+                explaining the reason. PDF or image, max 8 MB.
+              </div>
             </div>
 
             <div id="amPickup" style="display:none">
@@ -291,8 +317,26 @@
           <script>
             function amToggle() {
               const t = document.getElementById('amType').value;
-              document.getElementById('amDate').style.display = t === 'travel_date' ? '' : 'none';
+              const isDate = t === 'travel_date';
+              const pBox = document.getElementById('amPostpone');
+              const postpone = pBox ? pBox.checked : false;
+
+              document.getElementById('amDate').style.display = isDate ? '' : 'none';
               document.getElementById('amPickup').style.display = t === 'pickup' ? '' : 'none';
+
+              // A postponement IS the absence of a date, so the date fields go away and
+              // are cleared — a stale value left in a hidden input would still post.
+              document.getElementById('amDateFields').style.display = postpone ? 'none' : '';
+              document.getElementById('amPostponeNote').style.display = postpone ? '' : 'none';
+              if (postpone) {
+                document.getElementById('amNewDate').value = '';
+                const dep = document.getElementById('amDeparture');
+                if (dep) dep.value = '';
+              }
+
+              // Chrome refuses to submit a form with a `required` field it cannot focus,
+              // so the attribute is toggled with visibility, never left on a hidden input.
+              document.getElementById('amFile').required = isDate;
             }
             amToggle();
           </script>

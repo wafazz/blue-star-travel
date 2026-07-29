@@ -33,11 +33,19 @@ class Booking extends Model
         'needs_revision'                => 'Needs Revision',
         'waiting_provider_confirmation' => 'Waiting Provider',
         'confirmed'                     => 'Confirmed',
+        'postponed'                     => 'Postponed',
         'rejected'                      => 'Rejected',
         'cancelled'                     => 'Cancelled',
         'completed'                     => 'Completed',
         'refunded'                      => 'Refunded',
     ];
+
+    /**
+     * The trip is sold and the money is real, whether or not it has a date yet. Every
+     * sales figure, tier, achievement and leaderboard reads this — a customer postponing
+     * must never wipe the agent's credit for a booking they already closed.
+     */
+    const SOLD_STATUSES = ['confirmed', 'postponed', 'completed'];
 
     const STATUS_BADGE = [
         'draft'                         => 'secondary',
@@ -46,6 +54,7 @@ class Booking extends Model
         'needs_revision'                => 'warning',
         'waiting_provider_confirmation' => 'primary',
         'confirmed'                     => 'success',
+        'postponed'                     => 'warning',
         'rejected'                      => 'danger',
         'cancelled'                     => 'secondary',
         'completed'                     => 'success',
@@ -63,6 +72,9 @@ class Booking extends Model
         'waiting_provider_confirmation' => ['Approved', 'primary'],
         'needs_revision'                => ['Need Revision', 'warning'],
         'confirmed'                     => ['Confirmed', 'success'],
+        // Its own label, deliberately. Rolling it into Confirmed would hide the one thing
+        // the agent has to chase: this trip is still waiting on a date from the customer.
+        'postponed'                     => ['Postponed', 'warning'],
         'completed'                     => ['Completed', 'dark'],
         'rejected'                      => ['Cancelled', 'danger'],
         'cancelled'                     => ['Cancelled', 'danger'],
@@ -77,6 +89,7 @@ class Booking extends Model
         'needs_revision' => 'Need Revision',
         'approved'       => 'Approved',
         'confirmed'      => 'Confirmed',
+        'postponed'      => 'Postponed',
         'completed'      => 'Completed',
         'cancelled'      => 'Cancelled',
     ];
@@ -88,6 +101,7 @@ class Booking extends Model
         'Need Revision' => ['warning', 'Revision requested by admin'],
         'Approved'      => ['primary', 'Information approved'],
         'Confirmed'     => ['success', 'Booking confirmed'],
+        'Postponed'     => ['warning', 'Trip on hold — customer has not picked a new date'],
         'Completed'     => ['dark', 'Trip finished'],
         'Cancelled'     => ['danger', 'Booking cancelled'],
     ];
@@ -245,6 +259,22 @@ class Booking extends Model
     public function needsRevision(): bool
     {
         return $this->status === 'needs_revision';
+    }
+
+    /**
+     * On hold with no date. NOT the same as an open-dated package: `packages.date_mode`
+     * is a property of what is being sold, this is a state of one sold trip. A postponed
+     * booking holds no seats and shows no travel date until the customer picks one.
+     */
+    public function isPostponed(): bool
+    {
+        return $this->status === 'postponed';
+    }
+
+    /** Confirmed or postponed — both hold a live, paid-for trip that can still be amended. */
+    public function isAmendable(): bool
+    {
+        return in_array($this->status, ['confirmed', 'postponed']);
     }
 
     // A finished or dead booking is the only thing an agent may not touch. Everything

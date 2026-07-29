@@ -31,7 +31,7 @@ class DashboardController extends Controller
             ['Monthly Sales', 'RM ' . number_format($salesMonth, 2), '📈', 'success'],
             ['Total Bookings', number_format(Booking::count()), '📋', 'info'],
             ['Pending Bookings', number_format(Booking::whereIn('status', ['pending_verification', 'pending_payment', 'waiting_provider_confirmation'])->count()), '⏳', 'warning'],
-            ['Confirmed Bookings', number_format(Booking::whereIn('status', ['confirmed', 'completed'])->count()), '✅', 'success'],
+            ['Confirmed Bookings', number_format(Booking::whereIn('status', Booking::SOLD_STATUSES)->count()), '✅', 'success'],
             ['Pending Payments', 'RM ' . number_format($pendingPayAmt, 2), '💳', 'danger'],
             ['Active Agents', number_format(User::where('role', 'agent')->where('status', 'active')->count()), '🧑‍💼', 'primary'],
             ['Commission Payable', 'RM ' . number_format($commissionDue, 2), '💰', 'warning'],

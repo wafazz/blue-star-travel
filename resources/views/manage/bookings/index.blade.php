@@ -26,6 +26,11 @@
       </a>
     </div>
     <div class="col-6 col-lg">
+      <a href="{{ route('manage.bookings.index', ['status' => 'postponed']) }}" class="text-decoration-none">
+        <div class="card p-3"><div class="fs-4 fw-bold text-warning">{{ $counts['postponed'] }}</div><div class="text-secondary small">Postponed</div></div>
+      </a>
+    </div>
+    <div class="col-6 col-lg">
       <a href="{{ route('manage.bookings.index') }}" class="text-decoration-none">
         <div class="card p-3"><div class="fs-4 fw-bold">All</div><div class="text-secondary small">Clear filters</div></div>
       </a>

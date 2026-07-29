@@ -40,6 +40,7 @@ class BookingController extends Controller
             'needs_revision'                => Booking::where('status', 'needs_revision')->count(),
             'waiting_provider_confirmation' => Booking::where('status', 'waiting_provider_confirmation')->count(),
             'confirmed'                     => Booking::where('status', 'confirmed')->count(),
+            'postponed'                     => Booking::where('status', 'postponed')->count(),
         ];
 
         return view('manage.bookings.index', compact('bookings', 'counts'));

@@ -261,6 +261,9 @@
                       <span class="badge text-bg-{{ $am->statusBadge() }} ms-1">{{ ucfirst($am->status) }}</span>
                     </div>
                     <div class="small text-secondary mt-1">{{ $am->reason }}</div>
+                    @if ($am->attachment_path)
+                      <a href="{{ route('amendments.attachment', $am) }}" target="_blank" class="btn btn-sm btn-outline-secondary mt-2">📎 Supporting document</a>
+                    @endif
                     <div class="text-secondary mt-1" style="font-size:.72rem">
                       {{ $am->requester?->name ?? 'Agent' }} · {{ $am->created_at->format('d M Y, H:i') }}
                       @if ($am->reviewed_at)
@@ -273,11 +276,7 @@
                     <div class="text-secondary" style="font-size:.72rem">From</div>
                     <div>{{ $am->current_value ?? '—' }}</div>
                     <div class="text-secondary mt-1" style="font-size:.72rem">To</div>
-                    <div class="fw-semibold">
-                      {{ optional($am->packageDate?->depart_date)->format('d M Y')
-                         ?? optional($am->requested_date)->format('d M Y')
-                         ?? $am->requested_pickup_location ?? '—' }}
-                    </div>
+                    <div class="fw-semibold">{{ $am->requestedLabel() }}</div>
                   </div>
                 </div>
 
@@ -290,7 +289,14 @@
                       <button class="btn btn-outline-danger"
                               formaction="{{ route('manage.bookings.amendments.reject', [$booking, $am]) }}">✕ Reject</button>
                     </div>
-                    <div class="form-text small">Approving moves seats between departures and reissues the invoice &amp; voucher.</div>
+                    <div class="form-text small">
+                      @if ($am->isPostponement())
+                        Approving releases the seats and parks the booking as <b>Postponed</b> — no travel date
+                        until the customer picks one. It is not an open-dated booking and nothing is refunded.
+                      @else
+                        Approving moves seats between departures and reissues the invoice &amp; voucher.
+                      @endif
+                    </div>
                   </form>
                 @endif
               </div>
