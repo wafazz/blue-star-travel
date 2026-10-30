@@ -44,8 +44,25 @@
             </p>
 
             <label class="form-label small fw-semibold">Model</label>
-            <input type="text" name="model[{{ $key }}]" value="{{ old("model.$key", $p['model']) }}"
-                   class="form-control mb-1" placeholder="{{ $p['model_default'] ?: 'Enter a model ID' }}" maxlength="100">
+            @php
+              $current = old("model.$key", $p['model']);
+              $options = $p['model_options'];
+              if ($current && $current !== \App\Http\Controllers\Manage\AiAssistantController::OTHER_MODEL && ! in_array($current, $options, true)) {
+                  array_unshift($options, $current); // keep a saved ID that is not in the list
+              }
+            @endphp
+            <select name="model[{{ $key }}]" class="form-select mb-2" aria-label="{{ $p['label'] }} model">
+              <option value="">— Choose a model —</option>
+              @foreach ($options as $option)
+                <option value="{{ $option }}" @selected($current === $option)>{{ $option }}</option>
+              @endforeach
+              <option value="{{ \App\Http\Controllers\Manage\AiAssistantController::OTHER_MODEL }}" @selected($current === \App\Http\Controllers\Manage\AiAssistantController::OTHER_MODEL)>Other (type the model ID below)</option>
+            </select>
+            {{-- Standalone form (see below): a button inside this form cannot submit another form. --}}
+            <button type="submit" form="refresh-{{ $key }}" class="btn btn-sm btn-outline-secondary mb-2">Check for new models</button>
+            <div class="form-text mb-1">Adds any new chat models from {{ $p['label'] }} to the list above. It never changes the model in use.</div>
+            <input type="text" name="model_other[{{ $key }}]" value="{{ old("model_other.$key") }}"
+                   class="form-control mb-1" placeholder="Used only when Other is selected" maxlength="100">
             <div class="form-text mb-3">
               @if ($key === 'anthropic')
                 Default <code>claude-opus-5-5</code>. Change only when you deliberately move to another Claude model.
@@ -93,6 +110,12 @@
 
         <button class="btn btn-primary">Save Assistant Settings</button>
       </form>
+
+      @foreach ($providers as $key => $p)
+        <form id="refresh-{{ $key }}" method="POST" action="{{ route('manage.ai-assistant.models.refresh', $key) }}">
+          @csrf
+        </form>
+      @endforeach
 
       <form method="POST" action="{{ route('manage.ai-assistant.test') }}" class="mt-2">
         @csrf

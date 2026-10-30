@@ -99,6 +99,20 @@ class AssistantSettings
         return Setting::get("assistant.key.{$provider}") ? 'settings' : (config("ai.drivers.{$provider}.api_key") ? 'env' : 'none');
     }
 
+    /** Model IDs found by "Check for new models". Only ever added to, never removed by a check. */
+    public function discoveredModels(string $provider): array
+    {
+        $saved = Setting::get("assistant.models.{$provider}");
+        $list = $saved ? json_decode($saved, true) : [];
+
+        return is_array($list) ? array_values(array_filter($list, 'is_string')) : [];
+    }
+
+    public function saveDiscoveredModels(string $provider, array $models): void
+    {
+        Setting::put("assistant.models.{$provider}", json_encode(array_values(array_unique($models))));
+    }
+
     /** Price per 1M input tokens as entered by HQ (currency is whatever HQ uses). Null when not set. */
     public function priceIn(string $provider): ?float
     {
