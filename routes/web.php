@@ -325,6 +325,7 @@ Route::middleware(['auth', 'role:super_admin,hq,admin'])->group(function () {
             Route::get('ai-assistant', [ManageAiAssistant::class, 'edit'])->name('ai-assistant.edit');
             Route::put('ai-assistant', [ManageAiAssistant::class, 'update'])->name('ai-assistant.update');
             Route::post('ai-assistant/test', [ManageAiAssistant::class, 'test'])->name('ai-assistant.test');
+            Route::post('ai-assistant/models/{provider}/refresh', [ManageAiAssistant::class, 'refresh'])->name('ai-assistant.models.refresh');
             Route::get('ai-assistant/conversations', [ManageAiConversation::class, 'index'])->name('ai-assistant.conversations');
             Route::get('ai-assistant/conversations/{conversation}', [ManageAiConversation::class, 'show'])->name('ai-assistant.conversation');
             Route::post('ai-assistant/conversations/{conversation}/draft', [ManageAiConversation::class, 'draft'])->name('ai-assistant.draft');
