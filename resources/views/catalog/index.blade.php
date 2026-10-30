@@ -2,6 +2,7 @@
 @section('title', 'Packages')
 
 @section('content')
+  @include('partials.assistant-widget')
   <div class="abar">
     <div><div class="t">Explore Packages</div><div class="sub">{{ $packages->total() }} trips available</div></div>
   </div>

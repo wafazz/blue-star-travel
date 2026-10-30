@@ -40,6 +40,10 @@ use App\Http\Controllers\Agent\MarketingController as AgentMarketing;
 use App\Http\Controllers\Agent\TicketController as AgentTicket;
 use App\Http\Controllers\Manage\ReportController as ManageReport;
 use App\Http\Controllers\Manage\PaymentGatewayController as ManagePaymentGateway;
+use App\Http\Controllers\Manage\AiAssistantController as ManageAiAssistant;
+use App\Http\Controllers\Manage\AiConversationController as ManageAiConversation;
+use App\Http\Controllers\Manage\AiUsageController as ManageAiUsage;
+use App\Http\Controllers\AssistantController;
 use App\Http\Controllers\NotificationController;
 
 /*
@@ -316,6 +320,15 @@ Route::middleware(['auth', 'role:super_admin,hq,admin'])->group(function () {
             Route::get('payment-gateway', [ManagePaymentGateway::class, 'edit'])->name('payment-gateway.edit');
             Route::put('payment-gateway', [ManagePaymentGateway::class, 'update'])->name('payment-gateway.update');
             Route::post('payment-gateway/test', [ManagePaymentGateway::class, 'test'])->name('payment-gateway.test');
+
+            // AI assistant: provider keys, models, limits and the on/off switch (enhancement/)
+            Route::get('ai-assistant', [ManageAiAssistant::class, 'edit'])->name('ai-assistant.edit');
+            Route::put('ai-assistant', [ManageAiAssistant::class, 'update'])->name('ai-assistant.update');
+            Route::post('ai-assistant/test', [ManageAiAssistant::class, 'test'])->name('ai-assistant.test');
+            Route::get('ai-assistant/conversations', [ManageAiConversation::class, 'index'])->name('ai-assistant.conversations');
+            Route::get('ai-assistant/conversations/{conversation}', [ManageAiConversation::class, 'show'])->name('ai-assistant.conversation');
+            Route::post('ai-assistant/conversations/{conversation}/draft', [ManageAiConversation::class, 'draft'])->name('ai-assistant.draft');
+            Route::get('ai-assistant/usage', [ManageAiUsage::class, 'index'])->name('ai-assistant.usage');
         });
 
         // Reports & analytics
@@ -350,6 +363,10 @@ Route::middleware(['auth'])->group(function () {
 */
 // Vendor webhook: server-to-server, no session, CSRF-exempt — the vendor SIGNATURE
 // is the authentication (see bootstrap/app.php). Must sit outside the auth group.
+// AI travel assistant: public widget endpoint, for visitors and logged-in customers (enhancement REQ-AI-001)
+Route::post('assistant/message', [AssistantController::class, 'message'])
+    ->name('assistant.message')->middleware('throttle:30,1');
+
 Route::post('pay/webhook/{driver}', [PaymentGatewayController::class, 'webhook'])
     ->name('gateway.webhook')->middleware('throttle:60,1');
 Route::get('pay/return/{driver}', [PaymentGatewayController::class, 'return'])
