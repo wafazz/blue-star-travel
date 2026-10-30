@@ -60,6 +60,9 @@
   @if ($u->hasAccess('company'))<a class="nav-link px-2 py-2 {{ request()->routeIs('manage.company.*') ? 'active' : '' }}" href="{{ route('manage.company.edit') }}">🏢 Company Profile</a>@endif
   @if ($u->hasRole('super_admin', 'hq'))
     <a class="nav-link px-2 py-2 {{ request()->routeIs('manage.payment-gateway.*') ? 'active' : '' }}" href="{{ route('manage.payment-gateway.edit') }}">💳 Payment Gateway</a>
+    <a class="nav-link px-2 py-2 {{ request()->routeIs('manage.ai-assistant.edit') || request()->routeIs('manage.ai-assistant.update') || request()->routeIs('manage.ai-assistant.test') ? 'active' : '' }}" href="{{ route('manage.ai-assistant.edit') }}">🤖 AI Assistant</a>
+    <a class="nav-link px-2 py-2 {{ request()->routeIs('manage.ai-assistant.conversation*') || request()->routeIs('manage.ai-assistant.draft') ? 'active' : '' }}" href="{{ route('manage.ai-assistant.conversations') }}">💬 AI Conversations</a>
+    <a class="nav-link px-2 py-2 {{ request()->routeIs('manage.ai-assistant.usage') ? 'active' : '' }}" href="{{ route('manage.ai-assistant.usage') }}">📈 AI Usage</a>
     <a class="nav-link px-2 py-2 {{ request()->routeIs('manage.staff.*') ? 'active' : '' }}" href="{{ route('manage.staff.index') }}">🔐 Staff &amp; Access</a>
   @endif
 @endif
