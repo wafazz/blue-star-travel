@@ -91,5 +91,7 @@
 
       <div style="padding-bottom:20px"><button class="btn">Save Profile</button></div>
     </form>
+
+    <a href="{{ route('customer.password.edit') }}" class="btn ghost" style="margin-bottom:20px;text-align:center">🔑 Change password</a>
   </div>
 @endsection

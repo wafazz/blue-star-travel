@@ -26,6 +26,9 @@
 
         <label class="lbl">Title / Designation</label>
         <input type="text" name="title" value="{{ old('title', $user->title) }}" class="inp" maxlength="80" placeholder="e.g. Sales Executive">
+
+        <label class="lbl">Address</label>
+        <input type="text" name="address" value="{{ old('address', $user->address) }}" class="inp" maxlength="255" placeholder="Office address">
       </div>
 
       <div class="card">
@@ -41,5 +44,7 @@
 
       <div style="padding-bottom:20px"><button class="btn">Save Profile</button></div>
     </form>
+
+    <a href="{{ route('customer.password.edit') }}" class="btn ghost" style="margin-bottom:20px;text-align:center">🔑 Change password</a>
   </div>
 @endsection

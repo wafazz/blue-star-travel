@@ -7,6 +7,7 @@ use App\Http\Controllers\Auth\AgentRegisterController;
 use App\Http\Controllers\CatalogController;
 use App\Http\Controllers\Customer\BookingController as CustomerBooking;
 use App\Http\Controllers\Customer\ProfileController as CustomerProfile;
+use App\Http\Controllers\Account\PasswordController as AccountPassword;
 use App\Http\Controllers\Customer\TicketController as CustomerTicket;
 use App\Http\Controllers\Agent\DashboardController as AgentDashboard;
 use App\Http\Controllers\Customer\DashboardController as CustomerDashboard;
@@ -77,6 +78,9 @@ Route::get('/packages/{slug}', [CatalogController::class, 'show'])->name('catalo
 Route::middleware(['auth', 'role:customer,agent,super_admin,hq,admin'])->prefix('account')->name('customer.')->group(function () {
     Route::get('/profile', [CustomerProfile::class, 'edit'])->name('profile.edit');
     Route::put('/profile', [CustomerProfile::class, 'update'])->name('profile.update');
+
+    Route::get('/password', [AccountPassword::class, 'edit'])->name('password.edit');
+    Route::put('/password', [AccountPassword::class, 'update'])->name('password.update');
 });
 
 Route::middleware(['auth', 'role:customer'])->prefix('account')->name('customer.')->group(function () {

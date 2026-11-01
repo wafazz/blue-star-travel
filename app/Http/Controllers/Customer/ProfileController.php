@@ -38,13 +38,15 @@ class ProfileController extends Controller
             'email' => ['prohibited'],
             'name'  => ['required', 'string', 'max:120'],
             'phone' => ['nullable', 'string', 'max:30'],
-            'title' => ['nullable', 'string', 'max:80'],
+            'title'   => ['nullable', 'string', 'max:80'],
+            'address' => ['nullable', 'string', 'max:255'],
         ]);
 
         $user->update([
-            'name'  => trim($data['name']),
-            'phone' => trim((string) ($data['phone'] ?? '')) ?: null,
-            'title' => trim((string) ($data['title'] ?? '')) ?: null,
+            'name'    => trim($data['name']),
+            'phone'   => trim((string) ($data['phone'] ?? '')) ?: null,
+            'title'   => trim((string) ($data['title'] ?? '')) ?: null,
+            'address' => trim((string) ($data['address'] ?? '')) ?: null,
         ]);
 
         return back()->with('ok', 'Profile updated.');
