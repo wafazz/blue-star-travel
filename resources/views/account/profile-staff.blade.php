@@ -26,6 +26,10 @@
           <label class="form-label small fw-semibold">Title / Designation</label>
           <input type="text" name="title" value="{{ old('title', $user->title) }}" class="form-control" maxlength="80" placeholder="e.g. Sales Executive">
         </div>
+        <div class="mb-3">
+          <label class="form-label small fw-semibold">Address</label>
+          <input type="text" name="address" value="{{ old('address', $user->address) }}" class="form-control" maxlength="255" placeholder="Office address">
+        </div>
 
         <h6 class="fw-bold mt-4 mb-3">Account</h6>
         <div class="mb-3">
@@ -36,6 +40,8 @@
 
         <button class="btn btn-brand">Save profile</button>
       </form>
+
+      <a href="{{ route('customer.password.edit') }}" class="btn btn-outline-secondary mt-3">Change password</a>
     </div>
   </div>
 @endsection

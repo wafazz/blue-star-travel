@@ -120,4 +120,21 @@ class AccountProfileTest extends TestCase
         $this->actingAs($admin)->get(route('manage.card'))
             ->assertSee(route('customer.profile.edit'), false);
     }
+
+    public function test_agent_and_staff_profiles_save_the_address(): void
+    {
+        $agent = $this->agent();
+        $admin = $this->staff('admin');
+
+        $this->actingAs($agent)->put(route('customer.profile.update'), [
+            'name' => 'Agent One', 'address' => 'PT384, Lembah Sireh, Kota Bharu',
+        ])->assertSessionHasNoErrors();
+        $this->assertSame('PT384, Lembah Sireh, Kota Bharu', $agent->refresh()->address);
+
+        $this->actingAs($admin)->get(route('customer.profile.edit'))->assertOk()->assertSee('Office address');
+        $this->actingAs($admin)->put(route('customer.profile.update'), [
+            'name' => 'Staff One', 'address' => 'Head office, Kuala Lumpur',
+        ])->assertSessionHasNoErrors();
+        $this->assertSame('Head office, Kuala Lumpur', $admin->refresh()->address);
+    }
 }
