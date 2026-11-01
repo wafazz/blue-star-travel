@@ -22,7 +22,13 @@
           </div>
           <div class="mb-3">
             <label class="form-label small fw-semibold">Email *</label>
-            <input type="email" name="email" value="{{ old('email', $staff->email) }}" class="form-control" required>
+            @if ($staff->exists && $staff->is(auth()->user()))
+              {{-- Own record: the login email is changed by HQ only. Disabled, so it is not submitted. --}}
+              <input type="email" value="{{ $staff->email }}" class="form-control" disabled>
+              <div class="form-text">You cannot change your own login email.</div>
+            @else
+              <input type="email" name="email" value="{{ old('email', $staff->email) }}" class="form-control" required>
+            @endif
           </div>
           <div class="mb-3">
             <label class="form-label small fw-semibold">Phone</label>

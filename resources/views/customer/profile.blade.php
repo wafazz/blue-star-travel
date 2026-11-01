@@ -17,6 +17,8 @@
 
       <div class="card">
         <h3>Personal</h3>
+        <label class="lbl">Email (login — changed by HQ only)</label>
+        <input type="email" value="{{ $customer->user?->email ?? auth()->user()->email }}" class="inp" disabled>
         <label class="lbl">Full name (as per passport)</label>
         <input type="text" name="name" value="{{ old('name', $customer->name) }}" class="inp" required>
         <label class="lbl">Phone</label>

@@ -48,7 +48,10 @@ class StaffController extends Controller
     {
         abort_unless(in_array($staff->role, ['hq', 'admin'], true), 403, 'This account cannot be edited here.');
 
-        $data = $this->validated($request, $staff->id);
+        // HQ can change other staff's email, but not their own — that is a profile change and
+        // the login email is locked there, same as every other profile.
+        $isSelf = $staff->is($request->user());
+        $data = $this->validated($request, $staff->id, $isSelf);
         if (! empty($data['password'])) {
             $data['password'] = bcrypt($data['password']);
         } else {
@@ -71,11 +74,13 @@ class StaffController extends Controller
         return redirect()->route('manage.staff.index')->with('ok', 'Staff account removed.');
     }
 
-    private function validated(Request $request, ?int $ignoreId): array
+    private function validated(Request $request, ?int $ignoreId, bool $lockEmail = false): array
     {
         return $request->validate([
             'name'          => ['required', 'string', 'max:255'],
-            'email'         => ['required', 'email', Rule::unique('users', 'email')->ignore($ignoreId)],
+            'email'         => $lockEmail
+                ? ['prohibited']
+                : ['required', 'email', Rule::unique('users', 'email')->ignore($ignoreId)],
             'phone'         => ['nullable', 'string', 'max:30'],
             'role'          => ['required', Rule::in(array_keys(self::ROLES))],
             'status'        => ['required', 'in:active,pending,suspended'],

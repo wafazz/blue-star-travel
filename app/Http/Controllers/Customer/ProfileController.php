@@ -22,6 +22,8 @@ class ProfileController extends Controller
         abort_unless($customer, 403, 'No customer profile linked to this account.');
 
         $data = $request->validate([
+            // Email is the login and is changed by HQ only — reject it outright, never ignore it.
+            'email'                   => ['prohibited'],
             'name'                    => ['required', 'string', 'max:120'],
             'phone'                   => ['required', 'string', 'max:30'],
             'ic_passport_no'          => ['nullable', 'string', 'max:50'],
