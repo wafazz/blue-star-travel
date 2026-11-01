@@ -5,6 +5,7 @@
 @endphp
 
 <a class="nav-link px-2 py-2 {{ request()->routeIs($homeRoute) ? 'active' : '' }}" href="{{ route($homeRoute) }}">🏠 Dashboard</a>
+<a class="nav-link px-2 py-2 {{ request()->routeIs('manage.card*') ? 'active' : '' }}" href="{{ route('manage.card') }}">🪪 My Card</a>
 
 @if ($any('packages', 'providers', 'customers', 'agents'))
   <div class="text-uppercase small opacity-50 px-2 mt-3 mb-1" style="font-size:.7rem;letter-spacing:.05em">Catalog</div>

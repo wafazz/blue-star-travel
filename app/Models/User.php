@@ -22,6 +22,7 @@ class User extends Authenticatable
         'name',
         'email',
         'phone',
+        'title',
         'role',
         'referrer_id',
         'agent_code',
