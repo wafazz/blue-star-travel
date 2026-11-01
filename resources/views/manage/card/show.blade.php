@@ -35,7 +35,7 @@
         <div class="mb-3">
           <label class="form-label small fw-semibold">Name</label>
           <input type="text" class="form-control" value="{{ $user->name }}" disabled>
-          <div class="form-text">Changed by HQ.</div>
+          <div class="form-text">Edit your name on <a href="{{ route('customer.profile.edit') }}">My Profile</a>.</div>
         </div>
 
         <div class="mb-3">

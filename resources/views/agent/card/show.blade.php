@@ -38,7 +38,7 @@
 
         <label class="lbl">Name</label>
         <input type="text" value="{{ $user->name }}" class="inp" disabled>
-        <div class="m" style="font-size:11px;margin:4px 0 12px">Changed by HQ.</div>
+        <div class="m" style="font-size:11px;margin:4px 0 12px">Edit your name on <a href="{{ route('customer.profile.edit') }}">My Profile</a>.</div>
 
         <label class="lbl">Title / Designation</label>
         <input type="text" name="title" value="{{ old('title', $user->title) }}" class="inp" maxlength="80" placeholder="e.g. Sales Executive">

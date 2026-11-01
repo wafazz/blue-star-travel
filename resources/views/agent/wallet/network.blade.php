@@ -14,6 +14,12 @@
       <div style="flex:1;padding:16px 6px;border-left:1px solid var(--line)"><div style="font-size:22px;font-weight:800;color:var(--blue)">{{ auth()->user()->agent_code ?? '—' }}</div><div class="m" style="font-size:11px">My Code</div></div>
     </div>
 
+    <a href="{{ route('customer.profile.edit') }}" class="card" style="display:flex;align-items:center;gap:12px;text-decoration:none;color:inherit">
+      <span style="font-size:22px">👤</span>
+      <span style="flex:1"><span style="display:block;font-weight:800;font-size:14px">My Profile</span><span class="m" style="font-size:12px">Name, phone and title</span></span>
+      <span style="color:var(--blue);font-weight:800">›</span>
+    </a>
+
     <a href="{{ route('agent.card') }}" class="card" style="display:flex;align-items:center;gap:12px;text-decoration:none;color:inherit">
       <span style="font-size:22px">🪪</span>
       <span style="flex:1"><span style="display:block;font-weight:800;font-size:14px">My Business Card</span><span class="m" style="font-size:12px">Share your digital card and save-to-contacts link</span></span>
