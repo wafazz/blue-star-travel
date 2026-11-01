@@ -240,6 +240,7 @@ Route::middleware(['auth', 'role:super_admin,hq,admin'])->group(function () {
         // Internal — the resort invoice never reaches an agent portal route.
         Route::post('bookings/{booking}/resort-invoice', [ManageBooking::class, 'uploadResortInvoice'])->name('bookings.resort-invoice');
         Route::post('bookings/{booking}/revision', [ManageBooking::class, 'requestRevision'])->name('bookings.revision');
+        Route::post('bookings/{booking}/remark', [ManageBooking::class, 'saveRemark'])->name('bookings.remark');
         // Name stays under `bookings.` — EnsurePermission maps the section off that segment.
         Route::get('bookings/{booking}/versions/{version}', [ManageBooking::class, 'version'])->name('bookings.versions.show');
         Route::post('bookings/{booking}/amendments/{amendment}/approve', [ManageBooking::class, 'approveAmendment'])->name('bookings.amendments.approve');

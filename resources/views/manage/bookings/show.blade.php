@@ -168,6 +168,9 @@
         @if ($booking->agent_note)
           <div class="mt-2 p-2 bg-warning bg-opacity-10 rounded small"><strong>Agent note:</strong> {{ $booking->agent_note }}</div>
         @endif
+        @if ($booking->internal_notes)
+          <div class="mt-2 p-2 bg-secondary bg-opacity-10 rounded small"><strong>Staff remark:</strong> {{ $booking->internal_notes }}</div>
+        @endif
         @if ($booking->provider_note)
           <div class="mt-2 p-2 bg-primary bg-opacity-10 rounded small"><strong>Provider note:</strong> {{ $booking->provider_note }}</div>
         @endif

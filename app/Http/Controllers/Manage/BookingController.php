@@ -183,6 +183,18 @@ class BookingController extends Controller
         return back()->with('ok', 'Sent back to the agent for revision.');
     }
 
+    /**
+     * Staff-only remark, editable from the list without opening the booking. Writes
+     * `internal_notes` — never `agent_note` (agent-authored) or `notes` (customer's requests).
+     */
+    public function saveRemark(Booking $booking, Request $request)
+    {
+        $data = $request->validate(['internal_notes' => ['nullable', 'string', 'max:1000']]);
+        $booking->update(['internal_notes' => trim((string) ($data['internal_notes'] ?? '')) ?: null]);
+
+        return back()->with('ok', "Remark saved for {$booking->booking_no}.");
+    }
+
     public function reject(Booking $booking, Request $request)
     {
         $request->validate(['rejection_reason' => ['nullable', 'string', 'max:500']]);
