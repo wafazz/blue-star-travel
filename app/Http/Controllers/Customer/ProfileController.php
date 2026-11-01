@@ -3,26 +3,65 @@
 namespace App\Http\Controllers\Customer;
 
 use App\Http\Controllers\Controller;
+use App\Models\User;
 use Illuminate\Http\Request;
 
+/**
+ * /account/profile for every signed-in account. Customers (who have a customer profile) get the
+ * passport/address form; agents and back-office staff get name, phone and title.
+ * Email is the login and is changed by HQ only, so every variant rejects a submitted email.
+ */
 class ProfileController extends Controller
 {
     public function edit(Request $request)
     {
-        $customer = $request->user()->customerProfile;
-        abort_unless($customer, 403, 'No customer profile linked to this account.');
+        $user = $request->user();
 
-        return view('customer.profile', compact('customer'));
+        if ($customer = $user->customerProfile) {
+            return view('customer.profile', compact('customer'));
+        }
+
+        return view($this->accountView($user), ['user' => $user]);
     }
 
     public function update(Request $request)
     {
-        $user     = $request->user();
-        $customer = $user->customerProfile;
-        abort_unless($customer, 403, 'No customer profile linked to this account.');
+        $user = $request->user();
+
+        if ($user->customerProfile) {
+            return $this->updateCustomer($request, $user);
+        }
+
+        $this->accountView($user); // aborts for accounts without a profile page
 
         $data = $request->validate([
-            // Email is the login and is changed by HQ only — reject it outright, never ignore it.
+            'email' => ['prohibited'],
+            'name'  => ['required', 'string', 'max:120'],
+            'phone' => ['nullable', 'string', 'max:30'],
+            'title' => ['nullable', 'string', 'max:80'],
+        ]);
+
+        $user->update([
+            'name'  => trim($data['name']),
+            'phone' => trim((string) ($data['phone'] ?? '')) ?: null,
+            'title' => trim((string) ($data['title'] ?? '')) ?: null,
+        ]);
+
+        return back()->with('ok', 'Profile updated.');
+    }
+
+    private function accountView(User $user): string
+    {
+        abort_unless($user->role === 'agent' || $user->isStaff(), 403, 'No profile page for this account.');
+
+        return $user->role === 'agent' ? 'account.profile-agent' : 'account.profile-staff';
+    }
+
+    private function updateCustomer(Request $request, User $user)
+    {
+        $customer = $user->customerProfile;
+
+        $data = $request->validate([
             'email'                   => ['prohibited'],
             'name'                    => ['required', 'string', 'max:120'],
             'phone'                   => ['required', 'string', 'max:30'],

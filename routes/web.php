@@ -72,6 +72,13 @@ Route::middleware('guest')->group(function () {
 Route::get('/packages', [CatalogController::class, 'index'])->name('catalog.index');
 Route::get('/packages/{slug}', [CatalogController::class, 'show'])->name('catalog.show');
 
+// Profile is shared: customers get their passport/address form, agents and staff get a
+// name/phone/title form. Same URL and route names; the controller picks the view by account type.
+Route::middleware(['auth', 'role:customer,agent,super_admin,hq,admin'])->prefix('account')->name('customer.')->group(function () {
+    Route::get('/profile', [CustomerProfile::class, 'edit'])->name('profile.edit');
+    Route::put('/profile', [CustomerProfile::class, 'update'])->name('profile.update');
+});
+
 Route::middleware(['auth', 'role:customer'])->prefix('account')->name('customer.')->group(function () {
     Route::get('/', [CustomerDashboard::class, 'index'])->name('dashboard');
 
@@ -80,9 +87,6 @@ Route::middleware(['auth', 'role:customer'])->prefix('account')->name('customer.
     Route::post('/bookings', [CustomerBooking::class, 'store'])->name('bookings.store');
     Route::get('/bookings/{booking}', [CustomerBooking::class, 'show'])->name('bookings.show');
     Route::post('/bookings/{booking}/payment', [CustomerBooking::class, 'uploadPayment'])->name('bookings.payment');
-
-    Route::get('/profile', [CustomerProfile::class, 'edit'])->name('profile.edit');
-    Route::put('/profile', [CustomerProfile::class, 'update'])->name('profile.update');
 
     Route::get('/tickets', [CustomerTicket::class, 'index'])->name('tickets.index');
     Route::get('/tickets/create', [CustomerTicket::class, 'create'])->name('tickets.create');

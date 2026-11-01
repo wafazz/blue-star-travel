@@ -5,6 +5,7 @@
 @endphp
 
 <a class="nav-link px-2 py-2 {{ request()->routeIs($homeRoute) ? 'active' : '' }}" href="{{ route($homeRoute) }}">🏠 Dashboard</a>
+<a class="nav-link px-2 py-2 {{ request()->routeIs('customer.profile*') ? 'active' : '' }}" href="{{ route('customer.profile.edit') }}">👤 My Profile</a>
 <a class="nav-link px-2 py-2 {{ request()->routeIs('manage.card*') ? 'active' : '' }}" href="{{ route('manage.card') }}">🪪 My Card</a>
 
 @if ($any('packages', 'providers', 'customers', 'agents'))
