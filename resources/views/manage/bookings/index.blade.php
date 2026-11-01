@@ -91,6 +91,7 @@
             <th class="text-end">Total</th>
             <th class="text-end">Balance</th>
             <th>Status</th>
+            <th>Remark</th>
             <th></th>
           </tr>
         </thead>
@@ -110,10 +111,20 @@
                   <span class="badge text-bg-warning d-block mt-1" title="An amendment request is waiting for approval">⚠ Needs approval</span>
                 @endif
               </td>
+              {{-- Staff-only remark: saved in place so nobody has to open the booking to jot one down. --}}
+              <td style="min-width:240px">
+                <form method="POST" action="{{ route('manage.bookings.remark', $booking) }}" class="d-flex gap-1">
+                  @csrf
+                  <input type="text" name="internal_notes" value="{{ $booking->internal_notes }}" maxlength="1000"
+                         class="form-control form-control-sm" placeholder="Add remark…"
+                         aria-label="Remark for {{ $booking->booking_no }}">
+                  <button class="btn btn-sm btn-outline-secondary" title="Save remark">Save</button>
+                </form>
+              </td>
               <td class="text-end"><a href="{{ route('manage.bookings.show', $booking) }}" class="btn btn-sm btn-outline-primary">Open</a></td>
             </tr>
           @empty
-            <tr><td colspan="9" class="text-center text-secondary py-5">No bookings found.</td></tr>
+            <tr><td colspan="10" class="text-center text-secondary py-5">No bookings found.</td></tr>
           @endforelse
         </tbody>
       </table>
