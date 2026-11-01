@@ -29,6 +29,9 @@ use App\Http\Controllers\PaymentGatewayController;
 use App\Http\Controllers\Manage\CommissionController as ManageCommission;
 use App\Http\Controllers\Manage\WithdrawalController as ManageWithdrawal;
 use App\Http\Controllers\Agent\WalletController as AgentWallet;
+use App\Http\Controllers\Agent\CardController as AgentCard;
+use App\Http\Controllers\CardController as PublicCard;
+use App\Http\Controllers\Manage\CardController as ManageCard;
 use App\Http\Controllers\Agent\GamificationController as AgentGame;
 use App\Http\Controllers\Manage\RedemptionController as ManageRedemption;
 use App\Http\Controllers\Manage\CouponController as ManageCoupon;
@@ -101,6 +104,12 @@ Route::middleware('guest')->prefix('agent')->group(function () {
     Route::get('/register', [AgentRegisterController::class, 'show'])->name('agent.register');
     Route::post('/register', [AgentRegisterController::class, 'register'])->middleware('throttle:5,1');
 });
+// Public digital business card — read-only, active agents only (see CardController).
+Route::get('/card/{agentCode}', [PublicCard::class, 'show'])->name('card.public')->where('agentCode', '[A-Za-z0-9-]+');
+Route::get('/card/{agentCode}/vcard', [PublicCard::class, 'vcard'])->name('card.vcard')->where('agentCode', '[A-Za-z0-9-]+');
+Route::get('/card/staff/{user}', [PublicCard::class, 'staff'])->name('card.staff')->whereNumber('user');
+Route::get('/card/staff/{user}/vcard', [PublicCard::class, 'staffVcard'])->name('card.staff.vcard')->whereNumber('user');
+
 Route::middleware(['auth', 'role:agent'])->prefix('agent')->name('agent.')->group(function () {
     Route::get('/dashboard', [AgentDashboard::class, 'index'])->name('dashboard');
 
@@ -143,6 +152,10 @@ Route::middleware(['auth', 'role:agent'])->prefix('agent')->name('agent.')->grou
     Route::post('/wallet/withdraw', [AgentWallet::class, 'withdraw'])->name('wallet.withdraw');
     Route::get('/commissions', [AgentWallet::class, 'commissions'])->name('commissions');
     Route::get('/network', [AgentWallet::class, 'network'])->name('network');
+
+    // Digital business card — the agent edits title/phone; the public page is /card/{agent_code}.
+    Route::get('/card', [AgentCard::class, 'show'])->name('card');
+    Route::put('/card', [AgentCard::class, 'update'])->name('card.update');
 
     // Gamification
     Route::post('/checkin', [AgentGame::class, 'checkin'])->name('checkin');
@@ -209,6 +222,10 @@ Route::middleware(['auth', 'role:super_admin,hq,admin'])->group(function () {
 
     // Core Catalog management (shared by HQ + Admin). `perm` enforces per-section RBAC for admin staff.
     Route::middleware('perm')->prefix('manage')->name('manage.')->group(function () {
+        // Every staff role has its own card. Not a permissioned section, so no `perm` entry is needed.
+        Route::get('card', [ManageCard::class, 'show'])->name('card');
+        Route::put('card', [ManageCard::class, 'update'])->name('card.update');
+
         // Staff & access control — super_admin & hq only (not delegatable).
         Route::middleware('role:super_admin,hq')->group(function () {
             Route::resource('staff', \App\Http\Controllers\Manage\StaffController::class)->except('show');
