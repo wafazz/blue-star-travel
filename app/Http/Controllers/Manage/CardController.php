@@ -19,6 +19,8 @@ class CardController extends Controller
     public function update(Request $request)
     {
         $data = $request->validate([
+            // Login email: changed by HQ only. Rejected if submitted, never silently dropped.
+            'email' => ['prohibited'],
             'title' => ['nullable', 'string', 'max:80'],
             'phone' => ['nullable', 'string', 'max:30'],
         ]);

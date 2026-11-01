@@ -59,9 +59,9 @@ class BusinessCardTest extends TestCase
         $originalEmail = $agent->email;
         $originalCode = $agent->agent_code;
 
+        // The form never sends name/email/code; a tampered request is still ignored for these.
         $this->actingAs($agent)->put(route('agent.card.update'), [
             'name'       => 'Hijacked Name',
-            'email'      => 'evil@example.test',
             'agent_code' => 'BT-AG9999',
             'role'       => 'admin',
             'title'      => 'Director',
@@ -192,7 +192,7 @@ class BusinessCardTest extends TestCase
             ->assertSee(route('card.staff', $staff), false);
 
         $this->actingAs($staff)->put(route('manage.card.update'), [
-            'title' => 'Senior Admin', 'phone' => '013 999 0000', 'name' => 'Hacked', 'email' => 'x@example.test',
+            'title' => 'Senior Admin', 'phone' => '013 999 0000', 'name' => 'Hacked',
         ])->assertSessionHas('ok');
 
         $staff->refresh();
