@@ -55,8 +55,20 @@ class BookingController extends Controller
         $query->checkinBetween($dates['checkin_from'] ?? null, $dates['checkin_to'] ?? null)
             ->checkoutBetween($dates['checkout_from'] ?? null, $dates['checkout_to'] ?? null);
 
-        // Qualified: the stay-date joins also carry created_at, so a bare latest() is ambiguous.
-        $bookings = $query->latest('bookings.created_at')->paginate(12)->withQueryString();
+        // Sorting: whitelisted keys only. Check-in/out sort on the same SQL the filter uses.
+        // Qualified created_at: the stay-date joins also carry it, so a bare column is ambiguous.
+        $dir = $request->get('dir') === 'asc' ? 'asc' : 'desc';
+        match ($request->get('sort')) {
+            'checkin'  => $query->orderByRaw(Booking::checkinSql() . ' ' . $dir),
+            'checkout' => $query->orderByRaw(Booking::checkoutSql() . ' ' . $dir),
+            'total'    => $query->orderBy('bookings.total_amount', $dir),
+            default    => $query->orderBy('bookings.created_at', 'desc'),
+        };
+        if (in_array($request->get('sort'), ['checkin', 'checkout', 'total'], true)) {
+            $query->orderBy('bookings.created_at', 'desc'); // stable order inside equal values
+        }
+
+        $bookings = $query->paginate(12)->withQueryString();
 
         $counts = [
             'pending_verification'          => Booking::where('status', 'pending_verification')->count(),
@@ -208,6 +220,11 @@ class BookingController extends Controller
     {
         $data = $request->validate(['internal_notes' => ['nullable', 'string', 'max:1000']]);
         $booking->update(['internal_notes' => trim((string) ($data['internal_notes'] ?? '')) ?: null]);
+
+        // The list saves in place over JSON; a plain form post still gets the redirect.
+        if ($request->wantsJson()) {
+            return response()->json(['saved' => true, 'remark' => $booking->internal_notes]);
+        }
 
         return back()->with('ok', "Remark saved for {$booking->booking_no}.");
     }

@@ -330,7 +330,7 @@ class Booking extends Model
     }
 
     /** SQL twin of arrivalDate(): the chosen departure, else the typed travel date. */
-    private static function checkinSql(): string
+    public static function checkinSql(): string
     {
         return 'COALESCE(package_dates.depart_date, bookings.travel_date)';
     }
@@ -339,7 +339,7 @@ class Booking extends Model
      * SQL twin of returnDate(): the departure's return, else the typed return, else
      * check-in + package nights (only when the package has nights).
      */
-    private static function checkoutSql(): string
+    public static function checkoutSql(): string
     {
         $arrival = self::checkinSql();
 
