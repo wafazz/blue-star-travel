@@ -21,9 +21,15 @@ class BookingController extends Controller
 
     public function index(Request $request)
     {
-        $query = Booking::query()->with('package', 'customer', 'agent')
+        $query = Booking::query()->with('package', 'customer', 'agent', 'packageDate')
             // Drives the ⚠ flag on every row — one aggregate, not a query per booking.
-            ->withCount(['amendments as pending_amendments_count' => fn ($q) => $q->where('status', 'pending')]);
+            ->withCount(['amendments as pending_amendments_count' => fn ($q) => $q->where('status', 'pending')])
+            // Passenger mix for the Pack column: one SUM per type, not a query per booking.
+            ->withSum('rooms as adults_total', 'adults')
+            ->withSum('rooms as children_total', 'children')
+            ->withSum('rooms as seniors_total', 'seniors')
+            ->withSum('rooms as infants_total', 'infants')
+            ->withStayDates();
 
         if ($search = trim((string) $request->get('q'))) {
             $query->where(function ($w) use ($search) {
@@ -39,7 +45,18 @@ class BookingController extends Controller
             $query->whereHas('amendments', fn ($a) => $a->where('status', 'pending'));
         }
 
-        $bookings = $query->latest()->paginate(12)->withQueryString();
+        // Stay-date ranges, inclusive. Each side is optional, so "from" alone works too.
+        $dates = $request->validate([
+            'checkin_from'  => ['nullable', 'date_format:Y-m-d'],
+            'checkin_to'    => ['nullable', 'date_format:Y-m-d'],
+            'checkout_from' => ['nullable', 'date_format:Y-m-d'],
+            'checkout_to'   => ['nullable', 'date_format:Y-m-d'],
+        ]);
+        $query->checkinBetween($dates['checkin_from'] ?? null, $dates['checkin_to'] ?? null)
+            ->checkoutBetween($dates['checkout_from'] ?? null, $dates['checkout_to'] ?? null);
+
+        // Qualified: the stay-date joins also carry created_at, so a bare latest() is ambiguous.
+        $bookings = $query->latest('bookings.created_at')->paginate(12)->withQueryString();
 
         $counts = [
             'pending_verification'          => Booking::where('status', 'pending_verification')->count(),

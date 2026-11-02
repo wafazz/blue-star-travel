@@ -2,7 +2,9 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Carbon;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -293,6 +295,61 @@ class Booking extends Model
     public function isCancellableByAgent(): bool
     {
         return ! in_array($this->status, self::AGENT_LOCKED_STATUSES);
+    }
+
+    /**
+     * Join the stay-date sources (departure + package) so the check-in/check-out filters can see
+     * them. Call once per query, before the date scopes.
+     */
+    public function scopeWithStayDates(Builder $query): Builder
+    {
+        return $query
+            ->leftJoin('package_dates', 'package_dates.id', '=', 'bookings.package_date_id')
+            ->leftJoin('packages', 'packages.id', '=', 'bookings.package_id')
+            ->addSelect('bookings.*');
+    }
+
+    /** Filter on the same check-in date arrivalDate() shows. Needs withStayDates(). */
+    public function scopeCheckinBetween(Builder $query, ?string $from, ?string $to): Builder
+    {
+        $expr = self::checkinSql();
+
+        return $query
+            ->when($from, fn (Builder $q) => $q->whereRaw("{$expr} >= ?", [$from]))
+            ->when($to, fn (Builder $q) => $q->whereRaw("{$expr} <= ?", [$to]));
+    }
+
+    /** Filter on the same check-out date returnDate() shows. Needs withStayDates(). */
+    public function scopeCheckoutBetween(Builder $query, ?string $from, ?string $to): Builder
+    {
+        $expr = self::checkoutSql();
+
+        return $query
+            ->when($from, fn (Builder $q) => $q->whereRaw("{$expr} >= ?", [$from]))
+            ->when($to, fn (Builder $q) => $q->whereRaw("{$expr} <= ?", [$to]));
+    }
+
+    /** SQL twin of arrivalDate(): the chosen departure, else the typed travel date. */
+    private static function checkinSql(): string
+    {
+        return 'COALESCE(package_dates.depart_date, bookings.travel_date)';
+    }
+
+    /**
+     * SQL twin of returnDate(): the departure's return, else the typed return, else
+     * check-in + package nights (only when the package has nights).
+     */
+    private static function checkoutSql(): string
+    {
+        $arrival = self::checkinSql();
+
+        $plusNights = match (DB::connection()->getDriverName()) {
+            'sqlite' => "date({$arrival}, '+' || packages.duration_nights || ' days')",
+            'pgsql'  => "(({$arrival}) + (packages.duration_nights || ' days')::interval)::date",
+            default  => "DATE_ADD({$arrival}, INTERVAL packages.duration_nights DAY)", // mysql / mariadb
+        };
+
+        return "COALESCE(package_dates.return_date, bookings.return_date, CASE WHEN packages.duration_nights > 0 THEN {$plusNights} END)";
     }
 
     /** When the trip starts. A chosen departure wins; an open-dated booking uses travel_date. */
