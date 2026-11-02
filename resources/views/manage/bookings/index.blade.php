@@ -67,6 +67,14 @@
         </span>
       @endif
       <input type="text" name="q" value="{{ request('q') }}" class="form-control form-control-sm" placeholder="Search booking # / customer…" style="min-width:220px">
+      <span class="small text-secondary">Check-in</span>
+      <input type="date" name="checkin_from" value="{{ request('checkin_from') }}" class="form-control form-control-sm" style="width:auto" title="Check-in from" aria-label="Check-in from">
+      <span class="small text-secondary">to</span>
+      <input type="date" name="checkin_to" value="{{ request('checkin_to') }}" class="form-control form-control-sm" style="width:auto" title="Check-in to" aria-label="Check-in to">
+      <span class="small text-secondary">Check-out</span>
+      <input type="date" name="checkout_from" value="{{ request('checkout_from') }}" class="form-control form-control-sm" style="width:auto" title="Check-out from" aria-label="Check-out from">
+      <span class="small text-secondary">to</span>
+      <input type="date" name="checkout_to" value="{{ request('checkout_to') }}" class="form-control form-control-sm" style="width:auto" title="Check-out to" aria-label="Check-out to">
       <select name="status" class="form-select form-select-sm" style="width:auto" onchange="this.form.submit()">
         <option value="">Any status</option>
         @foreach (\App\Models\Booking::STATUSES as $k => $label)
@@ -86,11 +94,14 @@
             <th>Booking #</th>
             <th>Package</th>
             <th>Customer</th>
+            <th>Phone</th>
             <th>Agent</th>
-            <th>Travel</th>
+            <th>Check-in / Check-out</th>
+            <th>Pack</th>
             <th class="text-end">Total</th>
             <th class="text-end">Balance</th>
             <th>Status</th>
+            <th>Agent note</th>
             <th>Remark</th>
             <th></th>
           </tr>
@@ -101,14 +112,43 @@
               <td class="fw-semibold">{{ $booking->booking_no }}</td>
               <td class="small">{{ $booking->package?->title ?? '—' }}</td>
               <td class="small">{{ $booking->customer?->name ?? '—' }}</td>
+              <td class="small text-nowrap">
+                @if ($booking->customer?->phone)
+                  <a href="tel:{{ preg_replace('/[^0-9+]/', '', $booking->customer->phone) }}" class="text-decoration-none">{{ $booking->customer->phone }}</a>
+                @else
+                  —
+                @endif
+              </td>
               <td class="small text-secondary">{{ $booking->agent?->name ?? '—' }}</td>
-              <td class="small">{{ optional($booking->travel_date)->format('d M Y') ?? '—' }}</td>
+              <td class="small text-nowrap">
+                {{ $booking->arrivalDate()?->format('d M Y') ?? '—' }}
+                <span class="text-secondary">→</span>
+                {{ $booking->returnDate()?->format('d M Y') ?? '—' }}
+              </td>
+              <td class="small text-nowrap">
+                @php
+                  $pack = array_filter([
+                      (int) $booking->adults_total > 0 ? $booking->adults_total . ' Adult' . ((int) $booking->adults_total > 1 ? 's' : '') : null,
+                      (int) $booking->children_total > 0 ? $booking->children_total . ' Child' . ((int) $booking->children_total > 1 ? 'ren' : '') : null,
+                      (int) $booking->seniors_total > 0 ? $booking->seniors_total . ' Senior' . ((int) $booking->seniors_total > 1 ? 's' : '') : null,
+                      (int) $booking->infants_total > 0 ? $booking->infants_total . ' Infant' . ((int) $booking->infants_total > 1 ? 's' : '') : null,
+                  ]);
+                @endphp
+                {{ $pack ? implode(', ', $pack) : '—' }}
+              </td>
               <td class="text-end">RM {{ number_format($booking->total_amount, 2) }}</td>
               <td class="text-end {{ $booking->balance() > 0 ? 'text-danger' : 'text-success' }}">RM {{ number_format($booking->balance(), 2) }}</td>
               <td>
                 <span class="badge text-bg-{{ $booking->statusBadge() }}">{{ $booking->statusLabel() }}</span>
                 @if ($booking->pending_amendments_count)
                   <span class="badge text-bg-warning d-block mt-1" title="An amendment request is waiting for approval">⚠ Needs approval</span>
+                @endif
+              </td>
+              <td class="small" style="max-width:200px">
+                @if ($booking->agent_note)
+                  <span title="{{ $booking->agent_note }}">{{ \Illuminate\Support\Str::limit($booking->agent_note, 60) }}</span>
+                @else
+                  <span class="text-secondary">—</span>
                 @endif
               </td>
               {{-- Staff-only remark: saved in place so nobody has to open the booking to jot one down. --}}
@@ -124,7 +164,7 @@
               <td class="text-end"><a href="{{ route('manage.bookings.show', $booking) }}" class="btn btn-sm btn-outline-primary">Open</a></td>
             </tr>
           @empty
-            <tr><td colspan="10" class="text-center text-secondary py-5">No bookings found.</td></tr>
+            <tr><td colspan="13" class="text-center text-secondary py-5">No bookings found.</td></tr>
           @endforelse
         </tbody>
       </table>
