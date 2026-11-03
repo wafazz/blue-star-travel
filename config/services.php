@@ -35,4 +35,13 @@ return [
         ],
     ],
 
+    'webpush' => [
+        // VAPID keys identify this server to the browser push services (FCM, Apple, Mozilla).
+        // Generate once with Minishlink\WebPush\VAPID::createVapidKeys(). Never rotate them while devices are subscribed.
+        'public_key' => env('VAPID_PUBLIC_KEY'),
+        'private_key' => env('VAPID_PRIVATE_KEY'),
+        // Push services reject non-mailto/https subjects, so never fall back to a localhost APP_URL.
+        'subject' => env('VAPID_SUBJECT', 'mailto:'.env('MAIL_FROM_ADDRESS', 'admin@example.com')),
+    ],
+
 ];
