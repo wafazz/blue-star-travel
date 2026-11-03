@@ -176,4 +176,17 @@ class AgentWebPushTest extends TestCase
             ->assertSee(json_encode(route('agent.push.subscribe')), false)
             ->assertSee('data-push-enable', false);
     }
+
+    public function test_admin_agent_list_shows_which_agents_have_push_enabled(): void
+    {
+        $hq = User::factory()->create(['role' => 'hq', 'status' => 'active']);
+        $quiet = User::factory()->create(['role' => 'agent', 'status' => 'active', 'name' => 'Quiet Agent']);
+        PushSubscription::create(['user_id' => $this->agent->id, 'endpoint' => 'https://push.example/a', 'p256dh' => 'k', 'auth' => 'a']);
+
+        $this->actingAs($hq)->get(route('manage.agents.index'))
+            ->assertOk()
+            ->assertSee('On · 1 device')
+            ->assertSee('Off')
+            ->assertSee('Quiet Agent');
+    }
 }
