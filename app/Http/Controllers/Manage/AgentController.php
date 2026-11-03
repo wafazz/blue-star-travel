@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Models\Commission;
 use App\Models\User;
+use App\Jobs\SendTestPush;
 use App\Services\AgentTreeService;
 use App\Services\TierService;
 use Illuminate\Http\Request;
@@ -161,5 +162,26 @@ class AgentController extends Controller
         $agent->update($data);
 
         return back()->with('ok', "Agent {$agent->agent_code} updated.");
+    }
+
+    /** HQ test button: push a "working" message to one agent (agent_id) or to every agent with a device. */
+    public function pushTest(Request $request)
+    {
+        $data = $request->validate(['agent_id' => ['nullable', 'integer', 'exists:users,id']]);
+
+        $agents = User::where('role', 'agent')
+            ->whereHas('pushSubscriptions')
+            ->when(! empty($data['agent_id']), fn ($q) => $q->whereKey($data['agent_id']))
+            ->get();
+
+        if ($agents->isEmpty()) {
+            return back()->withErrors(['push' => 'No enabled device found for that selection.']);
+        }
+
+        foreach ($agents as $agent) {
+            SendTestPush::dispatch($agent->id);
+        }
+
+        return back()->with('ok', "Test push queued for {$agents->count()} agent(s).");
     }
 }

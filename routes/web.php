@@ -257,6 +257,7 @@ Route::middleware(['auth', 'role:super_admin,hq,admin'])->group(function () {
         Route::post('agents', [ManageAgent::class, 'store'])->name('agents.store');
         Route::post('agents/tier-rules', [ManageAgent::class, 'saveTierRules'])->name('agents.tier-rules');
         Route::post('agents/recalculate', [ManageAgent::class, 'recalculate'])->name('agents.recalculate');
+        Route::post('agents/push-test', [ManageAgent::class, 'pushTest'])->name('agents.push-test');
         Route::get('agents/{agent}', [ManageAgent::class, 'show'])->name('agents.show');
         Route::put('agents/{agent}', [ManageAgent::class, 'update'])->name('agents.update');
 

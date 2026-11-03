@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Jobs\SendPushNotification;
+use App\Jobs\SendTestPush;
 use App\Models\PushSubscription;
 use App\Models\User;
 use App\Services\NotificationService;
@@ -188,5 +189,47 @@ class AgentWebPushTest extends TestCase
             ->assertSee('On · 1 device')
             ->assertSee('Off')
             ->assertSee('Quiet Agent');
+    }
+
+    public function test_hq_test_push_queues_only_agents_with_an_enabled_device(): void
+    {
+        $hq = User::factory()->create(['role' => 'hq', 'status' => 'active']);
+        $quiet = User::factory()->create(['role' => 'agent', 'status' => 'active']);
+        PushSubscription::create(['user_id' => $this->agent->id, 'endpoint' => 'https://push.example/t1', 'p256dh' => 'k', 'auth' => 'a']);
+        Queue::fake();
+
+        $this->actingAs($hq)->post(route('manage.agents.push-test'))
+            ->assertSessionHas('ok');
+
+        Queue::assertPushed(SendTestPush::class, 1);
+        Queue::assertPushed(SendTestPush::class, fn ($job) => $job->userId === $this->agent->id);
+        Queue::assertNotPushed(SendTestPush::class, fn ($job) => $job->userId === $quiet->id);
+    }
+
+    public function test_hq_test_push_to_a_single_agent_without_device_is_refused(): void
+    {
+        $hq = User::factory()->create(['role' => 'hq', 'status' => 'active']);
+        $quiet = User::factory()->create(['role' => 'agent', 'status' => 'active']);
+        Queue::fake();
+
+        $this->actingAs($hq)->post(route('manage.agents.push-test'), ['agent_id' => $quiet->id])
+            ->assertSessionHasErrors('push');
+
+        Queue::assertNothingPushed();
+    }
+
+    public function test_test_push_job_sends_to_the_agents_device(): void
+    {
+        $this->configured();
+        PushSubscription::create(['user_id' => $this->agent->id, 'endpoint' => 'https://push.example/t2', 'p256dh' => 'k', 'auth' => 'a']);
+
+        $client = $this->createMock(WebPush::class);
+        $client->expects($this->once())->method('queueNotification');
+        $client->method('flush')->willReturn((function () {
+            yield new MessageSentReport(new Request('POST', 'https://push.example/t2'), new Response(201));
+        })());
+        $this->app->instance(WebPush::class, $client);
+
+        (new SendTestPush($this->agent->id))->handle(app(WebPushService::class));
     }
 }
