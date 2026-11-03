@@ -196,6 +196,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 .pagetitle{padding:16px 18px 4px;font-size:22px;font-weight:800}
 .hint{text-align:center;color:#5c6a90;font-size:12px;margin-top:14px;font-weight:600}
+[data-push-enable][hidden]{display:none!important}
 </style>
 @include('partials.pwa', ['portal' => 'agent'])
 @include('partials.agent-push')
