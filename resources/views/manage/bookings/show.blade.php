@@ -355,10 +355,109 @@
 
     <!-- Sidebar: money + timeline -->
     <div class="col-lg-4">
+      @if ($booking->package_date_id || $booking->postponements->isNotEmpty())
+      <div class="card p-3 p-lg-4 mb-3">
+        <h6 class="fw-bold mb-2">Postponed passengers</h6>
+        <div class="small text-secondary mb-2">Their fare stays on the booking. They hold no seat on the main departure until they are given their own.</div>
+        @forelse ($booking->postponements as $group)
+          <div class="small mb-2 pb-2 border-bottom">
+            <div class="fw-semibold">{{ $group->paxTotal() }} pax — {{ $group->adults }} adult, {{ $group->children }} child, {{ $group->seniors }} senior, {{ $group->infants }} infant</div>
+            @if ($group->reason)<div class="text-secondary">{{ $group->reason }}</div>@endif
+            @if ($group->isPending())
+              <span class="badge bg-warning-subtle text-warning-emphasis">New date pending</span>
+              @if ($booking->status === 'confirmed')
+                <form method="POST" action="{{ route('manage.bookings.postponements.redate', [$booking, $group]) }}" class="mt-2">
+                  @csrf
+                  <select name="package_date_id" class="form-select form-select-sm mb-2" required>
+                    <option value="">Choose departure…</option>
+                    @foreach ($booking->package?->bookableDates() ?? [] as $d)
+                      <option value="{{ $d->id }}">{{ $d->depart_date?->format('d M Y') }} · {{ max(0, $d->seats_total - $d->seats_booked) }} seats left</option>
+                    @endforeach
+                  </select>
+                  <button class="btn btn-sm btn-primary w-100">Give them this departure</button>
+                </form>
+              @endif
+            @else
+              <span class="badge bg-success-subtle text-success-emphasis">Redated → {{ $group->packageDate?->depart_date?->format('d M Y') }}</span>
+            @endif
+          </div>
+        @empty
+          <div class="small text-secondary mb-2">No passengers have postponed.</div>
+        @endforelse
+
+        @if ($booking->status === 'confirmed' && $booking->package_date_id && $booking->mainPax() > 1)
+          <form method="POST" action="{{ route('manage.bookings.postpone-pax', $booking) }}" class="border-top pt-2 mt-2">
+            @csrf
+            <div class="row g-2 mb-2">
+              @foreach (['adults' => 'Adults', 'children' => 'Children', 'seniors' => 'Seniors', 'infants' => 'Infants'] as $field => $label)
+                @if ($booking->{$field} > 0)
+                  <div class="col-6">
+                    <label class="form-label small mb-0">{{ $label }} <span class="text-secondary">(of {{ $booking->{$field} - $booking->postponements->sum($field) }} left)</span></label>
+                    <input type="number" name="{{ $field }}" min="0" max="{{ $booking->{$field} - $booking->postponements->sum($field) }}" value="0" class="form-control form-control-sm">
+                  </div>
+                @endif
+              @endforeach
+            </div>
+            <input type="text" name="reason" maxlength="255" class="form-control form-control-sm mb-2" placeholder="Reason (optional)">
+            <button class="btn btn-sm btn-outline-warning w-100" onclick="return confirm('Postpone these passengers? Their seats are released now.')">Postpone these passengers</button>
+          </form>
+        @endif
+      </div>
+      @endif
+
+      <div class="card p-3 p-lg-4 mb-3">
+        <h6 class="fw-bold mb-2">Price items</h6>
+        <div class="small text-secondary mb-2">Charged per passenger. Excluded items stay on the record but change neither the total nor the commission.</div>
+        @forelse ($booking->items as $item)
+          <div class="d-flex justify-content-between align-items-center small mb-2 gap-2">
+            <div class="{{ $item->included ? '' : 'text-decoration-line-through text-secondary' }}">
+              {{ $item->name }}<br>
+              <span class="text-secondary">{{ $item->unit_amount >= 0 ? '+' : '−' }} RM {{ number_format(abs($item->unit_amount), 2) }} / pax</span>
+              @unless ($item->included)<span class="badge bg-secondary-subtle text-secondary ms-1">Excluded</span>@endunless
+            </div>
+            @unless (in_array($booking->status, \App\Models\Booking::AGENT_LOCKED_STATUSES, true))
+              <div class="d-flex gap-1 flex-shrink-0">
+                <form method="POST" action="{{ route('manage.bookings.items.update', [$booking, $item]) }}">
+                  @csrf @method('PATCH')
+                  <input type="hidden" name="included" value="{{ $item->included ? 0 : 1 }}">
+                  <button class="btn btn-sm {{ $item->included ? 'btn-outline-secondary' : 'btn-outline-success' }}">{{ $item->included ? 'Exclude' : 'Include' }}</button>
+                </form>
+                <form method="POST" action="{{ route('manage.bookings.items.destroy', [$booking, $item]) }}" onsubmit="return confirm('Remove this price item?')">
+                  @csrf @method('DELETE')
+                  <button class="btn btn-sm btn-outline-danger" aria-label="Remove {{ $item->name }}">✕</button>
+                </form>
+              </div>
+            @endunless
+          </div>
+        @empty
+          <div class="small text-secondary mb-2">No price items yet.</div>
+        @endforelse
+
+        @unless (in_array($booking->status, \App\Models\Booking::AGENT_LOCKED_STATUSES, true))
+          <form method="POST" action="{{ route('manage.bookings.items.store', $booking) }}" class="border-top pt-2 mt-2">
+            @csrf
+            <input type="text" name="name" class="form-control form-control-sm mb-2" placeholder="e.g. Snorkelling" maxlength="120" required>
+            <div class="row g-2 mb-2">
+              <div class="col-7"><input type="number" name="unit_amount" step="0.01" min="-100000" max="100000" class="form-control form-control-sm" placeholder="RM per pax (− to deduct)" required></div>
+              <div class="col-5">
+                <select name="included" class="form-select form-select-sm" aria-label="Included in price">
+                  <option value="1">Included</option>
+                  <option value="0">Excluded</option>
+                </select>
+              </div>
+            </div>
+            <button class="btn btn-sm btn-primary w-100">Add item</button>
+          </form>
+        @endunless
+      </div>
+
       <div class="card p-3 p-lg-4 mb-3">
         <h6 class="fw-bold mb-3">Financials</h6>
         <div class="d-flex justify-content-between small mb-2"><span class="text-secondary">Subtotal</span><span>RM {{ number_format($booking->subtotal, 2) }}</span></div>
         <div class="d-flex justify-content-between small mb-2"><span class="text-secondary">Discount</span><span>− RM {{ number_format($booking->discount, 2) }}</span></div>
+        @if ($booking->items->isNotEmpty())
+          <div class="d-flex justify-content-between small mb-2"><span class="text-secondary">Price items (included)</span><span>{{ $booking->itemsTotal((int) $booking->total_pax) < 0 ? '− ' : '+ ' }}RM {{ number_format(abs($booking->itemsTotal((int) $booking->total_pax)), 2) }}</span></div>
+        @endif
         <hr class="my-2">
         <div class="d-flex justify-content-between mb-2"><span class="fw-semibold">Total</span><span class="fw-bold">RM {{ number_format($booking->total_amount, 2) }}</span></div>
         <div class="d-flex justify-content-between small mb-2"><span class="text-secondary">Paid</span><span class="text-success">RM {{ number_format($booking->paid_amount, 2) }}</span></div>

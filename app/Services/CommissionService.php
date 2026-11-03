@@ -167,6 +167,23 @@ class CommissionService
      */
     private function paxBreakdown(Booking $booking): array
     {
+        // Included price items are charged per passenger, so they raise each pax's base
+        // fare. A percentage commission therefore earns on them; a fixed one does not.
+        $out = $this->farePaxBreakdown($booking);
+        $perPax = \App\Models\BookingItem::perPaxFor($booking);
+
+        foreach ($out as $type => $p) {
+            if ($p['count'] > 0) {
+                $out[$type]['price'] = $p['price'] + $perPax;
+            }
+        }
+
+        return $out;
+    }
+
+    /** Fare-only breakdown, from the room lines (or the legacy columns). */
+    private function farePaxBreakdown(Booking $booking): array
+    {
         $rooms = $booking->relationLoaded('rooms') ? $booking->rooms : $booking->rooms()->get();
 
         if ($rooms->isEmpty()) {

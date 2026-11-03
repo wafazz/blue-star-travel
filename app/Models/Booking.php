@@ -268,6 +268,34 @@ class Booking extends Model
      * is a property of what is being sold, this is a state of one sold trip. A postponed
      * booking holds no seats and shows no travel date until the customer picks one.
      */
+    public function items(): HasMany
+    {
+        return $this->hasMany(BookingItem::class)->orderBy('id');
+    }
+
+    public function postponements(): HasMany
+    {
+        return $this->hasMany(BookingPostponement::class)->orderBy('id');
+    }
+
+    /** Passengers put off, pending or redated. None of them hold a seat on the main departure. */
+    public function postponedPaxTotal(): int
+    {
+        return (int) $this->postponements()->get()->sum(fn ($p) => $p->paxTotal());
+    }
+
+    /** Passengers still travelling on the booking's own departure — the seats it holds. */
+    public function mainPax(): int
+    {
+        return max(0, (int) $this->total_pax - $this->postponedPaxTotal());
+    }
+
+    /** What the included price items add to the total for this many passengers. */
+    public function itemsTotal(int $paxTotal): float
+    {
+        return round(BookingItem::perPaxFor($this) * $paxTotal, 2);
+    }
+
     public function isPostponed(): bool
     {
         return $this->status === 'postponed';
