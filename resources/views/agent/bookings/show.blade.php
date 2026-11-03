@@ -274,14 +274,23 @@
               @endunless
 
               <div id="amDateFields">
-                <label class="lbl">Requested new date</label>
-                <input type="date" name="requested_date" id="amNewDate" class="inp" min="{{ now()->addDay()->format('Y-m-d') }}">
+                <div class="row2">
+                  <div>
+                    <label class="lbl">Requested check-in date</label>
+                    <input type="date" name="requested_date" id="amNewDate" class="inp" min="{{ now()->addDay()->format('Y-m-d') }}">
+                  </div>
+                  <div>
+                    <label class="lbl">Requested check-out date</label>
+                    <input type="date" name="requested_return_date" id="amNewReturn" class="inp" min="{{ now()->addDays(2)->format('Y-m-d') }}">
+                  </div>
+                </div>
+                <div class="m" style="font-size:11.5px;margin:-6px 0 10px">Leave check-out blank to keep the package length.</div>
                 @if ($booking->package?->bookableDates()->isNotEmpty())
                   <label class="lbl">Or pick a scheduled departure</label>
-                  <select name="requested_package_date_id" id="amDeparture" class="inp">
+                  <select name="requested_package_date_id" id="amDeparture" class="inp" onchange="amDepartureToggle()">
                     <option value="">—</option>
                     @foreach ($booking->package->bookableDates() as $d)
-                      <option value="{{ $d->id }}">{{ $d->depart_date?->format('d M Y') }}</option>
+                      <option value="{{ $d->id }}">{{ $d->depart_date?->format('d M Y') }}@if ($d->return_date) → {{ $d->return_date->format('d M Y') }}@endif</option>
                     @endforeach
                   </select>
                 @endif
@@ -330,6 +339,7 @@
               document.getElementById('amPostponeNote').style.display = postpone ? '' : 'none';
               if (postpone) {
                 document.getElementById('amNewDate').value = '';
+                document.getElementById('amNewReturn').value = '';
                 const dep = document.getElementById('amDeparture');
                 if (dep) dep.value = '';
               }
@@ -338,7 +348,16 @@
               // so the attribute is toggled with visibility, never left on a hidden input.
               document.getElementById('amFile').required = isDate;
             }
+            // A scheduled departure owns both dates, so a typed check-out is switched off.
+            function amDepartureToggle() {
+              const dep = document.getElementById('amDeparture');
+              const out = document.getElementById('amNewReturn');
+              const picked = dep && dep.value !== '';
+              out.disabled = picked;
+              if (picked) out.value = '';
+            }
             amToggle();
+            amDepartureToggle();
           </script>
         @elseif ($booking->openAmendment)
           <div class="m" style="font-size:11.5px">An amendment is already awaiting HQ review — you'll be notified when it's decided.</div>

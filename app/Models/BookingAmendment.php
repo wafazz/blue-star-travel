@@ -10,8 +10,9 @@ class BookingAmendment extends Model
     protected $guarded = [];
 
     protected $casts = [
-        'requested_date'  => 'date',
-        'reviewed_at'     => 'datetime',
+        'requested_date'        => 'date',
+        'requested_return_date' => 'date',
+        'reviewed_at'           => 'datetime',
         'is_postponement' => 'boolean',
     ];
 
@@ -76,9 +77,16 @@ class BookingAmendment extends Model
             return 'Postponed — no new date yet';
         }
 
-        return optional($this->packageDate?->depart_date)->format('d M Y')
-            ?? optional($this->requested_date)->format('d M Y')
-            ?? $this->requested_pickup_location
-            ?? '—';
+        $in = optional($this->packageDate?->depart_date)->format('d M Y')
+            ?? optional($this->requested_date)->format('d M Y');
+
+        if ($in === null) {
+            return $this->requested_pickup_location ?? '—';
+        }
+
+        // Check-out is shown only when one was given; the package length covers the rest.
+        $out = optional($this->packageDate?->return_date ?? $this->requested_return_date)->format('d M Y');
+
+        return $out ? "{$in} → {$out}" : $in;
     }
 }

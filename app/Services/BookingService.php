@@ -704,6 +704,9 @@ class BookingService
         $booking->update([
             'package_date_id' => $newDate?->id ?? $booking->package_date_id,
             'travel_date'     => $newDate?->depart_date ?? $amendment->requested_date,
+            // Departure's own return wins; a typed check-out applies otherwise; null means
+            // the package length decides, as it does for any booking without one.
+            'return_date'     => $newDate ? $newDate->return_date : $amendment->requested_return_date,
             // A postponed trip that finally has a date is a confirmed trip again.
             'status'          => $booking->isPostponed() ? 'confirmed' : $booking->status,
         ]);
@@ -741,6 +744,14 @@ class BookingService
             'travel_date'     => data_get($payload, 'booking.travel_date'),
             'rooms'           => data_get($payload, 'rooms', []),
         ]);
+
+        $in = data_get($payload, 'booking.travel_date');
+        $out = data_get($payload, 'booking.return_date');
+        if (! data_get($payload, 'booking.package_date_id') && $in && $out && $out <= $in) {
+            throw ValidationException::withMessages([
+                'return_date' => 'The check-out date must be after the check-in date.',
+            ]);
+        }
 
         // Dropping below what was paid is no longer refused: the cancelled packs burn
         // their deposit (see forfeiture()) and anything the penalty does not absorb sits
