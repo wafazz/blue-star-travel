@@ -9,6 +9,7 @@ use App\Http\Controllers\Customer\BookingController as CustomerBooking;
 use App\Http\Controllers\Customer\ProfileController as CustomerProfile;
 use App\Http\Controllers\Account\PasswordController as AccountPassword;
 use App\Http\Controllers\Customer\TicketController as CustomerTicket;
+use App\Http\Controllers\Agent\PushController;
 use App\Http\Controllers\Agent\DashboardController as AgentDashboard;
 use App\Http\Controllers\Customer\DashboardController as CustomerDashboard;
 use App\Http\Controllers\Hq\DashboardController as HqDashboard;
@@ -183,6 +184,10 @@ Route::middleware(['auth', 'role:agent'])->prefix('agent')->name('agent.')->grou
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications');
 
     Route::post('/logout', [LoginController::class, 'logout'])->defaults('portal', 'agent')->name('logout');
+
+    // Web push opt-in — the device registers its subscription against the signed-in agent.
+    Route::post('/push/subscribe', [PushController::class, 'subscribe'])->name('push.subscribe');
+    Route::post('/push/unsubscribe', [PushController::class, 'unsubscribe'])->name('push.unsubscribe');
 });
 
 /*

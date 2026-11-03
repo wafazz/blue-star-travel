@@ -79,3 +79,53 @@ self.addEventListener('fetch', (event) => {
     );
   }
 });
+
+/*
+ * Web push — an agent's device receives a real OS notification for any activity
+ * on their account (booking, commission, withdrawal, ticket, broadcast ...).
+ * The payload is decided server-side (App\Jobs\SendPushNotification); a payload
+ * that cannot be parsed still shows a generic alert rather than being dropped.
+ */
+self.addEventListener('push', (event) => {
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch (e) {
+    data = { title: 'Blue Star Agent', body: event.data ? event.data.text() : '' };
+  }
+
+  event.waitUntil(
+    self.registration.showNotification(data.title || 'Blue Star Agent', {
+      body: data.body || '',
+      icon: '/images/icon-192.png',
+      badge: '/images/icon-192.png',
+      tag: data.tag || undefined,
+      renotify: Boolean(data.tag),
+      data: { url: data.url || '/agent/dashboard' },
+    })
+  );
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+
+  // Only ever open same-origin pages — never follow a URL from a push payload off-site.
+  let target = '/agent/dashboard';
+  try {
+    const candidate = new URL((event.notification.data && event.notification.data.url) || target, self.location.origin);
+    if (candidate.origin === self.location.origin) {
+      target = candidate.pathname + candidate.search + candidate.hash;
+    }
+  } catch (e) { /* keep the dashboard fallback */ }
+
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
+      for (const client of clients) {
+        if (new URL(client.url).origin === self.location.origin && 'focus' in client) {
+          return client.focus().then((focused) => (focused && 'navigate' in focused ? focused.navigate(target) : focused));
+        }
+      }
+      return self.clients.openWindow(target);
+    })
+  );
+});

@@ -197,6 +197,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .pagetitle{padding:16px 18px 4px;font-size:22px;font-weight:800}
 .hint{text-align:center;color:#5c6a90;font-size:12px;margin-top:14px;font-weight:600}
 </style>
+@include('partials.pwa', ['portal' => 'agent'])
+@include('partials.agent-push')
 </head>
 <body>
 @php $agent = auth()->user(); @endphp
@@ -205,6 +207,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 
     <!-- HOME -->
     <div class="page active" id="page-home">
+      <button type="button" data-push-enable hidden style="display:block;width:calc(100% - 40px);margin:14px 20px 0;padding:12px 14px;border:0;border-radius:14px;background:var(--blue);color:#fff;font-weight:700;font-size:14px;text-align:left;cursor:pointer">🔔 Turn on booking &amp; commission alerts</button>
       <div class="hero">
         <div class="top">
           <div class="avatar">{{ $agent->initials() }}</div>

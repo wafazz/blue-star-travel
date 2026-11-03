@@ -2,13 +2,15 @@
 
 namespace App\Services;
 
+use App\Jobs\SendPushNotification;
 use App\Models\Notification;
 use App\Models\User;
 use Illuminate\Support\Facades\Log;
 
 /**
- * Multi-channel notifications. In-app is always persisted; email / SMS / WhatsApp
- * are logged stubs until real vendors are wired (Planning §10 open question).
+ * Multi-channel notifications. In-app is always persisted; agents also get a real
+ * browser push (see WebPushService). Email / SMS / WhatsApp are logged stubs until
+ * real vendors are wired (Planning §10 open question).
  */
 class NotificationService
 {
@@ -33,6 +35,13 @@ class NotificationService
             'icon'     => self::ICONS[$type] ?? '🔔',
             'channels' => $channels,
         ]);
+
+        // Agents always get a real device push for anything that lands in their inbox,
+        // whatever channels the caller asked for. Queued after commit so a rolled-back
+        // transaction never pushes a notification that does not exist.
+        if ($user->hasRole('agent') && WebPushService::configured()) {
+            SendPushNotification::dispatch($notification->id)->afterCommit();
+        }
 
         foreach (array_diff($channels, ['inapp']) as $channel) {
             $this->dispatchExternal($channel, $user, $title, $body);
