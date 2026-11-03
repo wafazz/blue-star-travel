@@ -365,6 +365,11 @@ class BookingRevisionService
             }
         }
 
+        $paxTotal = array_sum(array_map(
+            fn ($l) => $l['adults'] + $l['children'] + $l['seniors'] + $l['infants'],
+            $priced['lines']
+        ));
+
         $booking->update([
             'package_id'      => data_get($payload, 'booking.package_id'),
             'package_date_id' => data_get($payload, 'booking.package_date_id'),
@@ -384,7 +389,7 @@ class BookingRevisionService
             'subtotal'     => $priced['subtotal'],
             // Trip price only. The penalty is taken out of paid_amount, not added here —
             // see Booking::balance().
-            'total_amount' => max(0, $priced['total'] - (float) $booking->discount),
+            'total_amount' => max(0, $priced['total'] - (float) $booking->discount + $booking->itemsTotal($paxTotal)),
         ]);
 
         // Room and pax rows carry no stable identity across a resubmit, so they are

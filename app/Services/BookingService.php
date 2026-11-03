@@ -354,7 +354,7 @@ class BookingService
             ]);
 
             if ($booking->packageDate) {
-                $booking->packageDate->increment('seats_booked', $booking->total_pax);
+                $booking->packageDate->increment('seats_booked', $booking->mainPax());
             }
 
             $this->documents->generateInvoice($booking);
@@ -462,7 +462,7 @@ class BookingService
             if ($wasConfirmed && $locked->packageDate) {
                 $locked->packageDate->decrement(
                     'seats_booked',
-                    min($locked->total_pax, $locked->packageDate->seats_booked)
+                    min($locked->mainPax(), $locked->packageDate->seats_booked)
                 );
             }
 
@@ -669,7 +669,7 @@ class BookingService
         // seats go back to the departure, the dates are cleared, and the booking parks in
         // `postponed` until a later amendment brings a real date.
         if ($amendment->isPostponement()) {
-            $oldDate?->decrement('seats_booked', min($booking->total_pax, $oldDate->seats_booked));
+            $oldDate?->decrement('seats_booked', min($booking->mainPax(), $oldDate->seats_booked));
 
             $booking->update([
                 'package_date_id' => null,
@@ -685,19 +685,19 @@ class BookingService
             // The booking already holds its own seats on the old departure, so its pax
             // must be added back before asking whether the new one has room — otherwise
             // it counts itself as competition.
-            $ownSeats = $oldDate && $oldDate->id === $newDate->id ? $booking->total_pax : 0;
-            if ($newDate->seats_total > 0 && $booking->total_pax > $newDate->seatsAvailable() + $ownSeats) {
+            $ownSeats = $oldDate && $oldDate->id === $newDate->id ? $booking->mainPax() : 0;
+            if ($newDate->seats_total > 0 && $booking->mainPax() > $newDate->seatsAvailable() + $ownSeats) {
                 throw ValidationException::withMessages([
                     'requested_package_date_id' => 'Only ' . $newDate->seatsAvailable()
-                        . ' seat(s) left on that departure — this booking needs ' . $booking->total_pax . '.',
+                        . ' seat(s) left on that departure — this booking needs ' . $booking->mainPax() . '.',
                 ]);
             }
 
             // Release the old departure only if there was one, but always take the new
             // one — a booking moving from "no departure" onto a date must still hold seats.
             if (! $oldDate || $oldDate->id !== $newDate->id) {
-                $oldDate?->decrement('seats_booked', min($booking->total_pax, $oldDate->seats_booked));
-                $newDate->increment('seats_booked', $booking->total_pax);
+                $oldDate?->decrement('seats_booked', min($booking->mainPax(), $oldDate->seats_booked));
+                $newDate->increment('seats_booked', $booking->mainPax());
             }
         }
 
@@ -861,7 +861,16 @@ class BookingService
     {
         DB::transaction(function () use ($booking, $actor, $reason) {
             if ($booking->status === 'confirmed' && $booking->packageDate) {
-                $booking->packageDate->decrement('seats_booked', min($booking->total_pax, $booking->packageDate->seats_booked));
+                $booking->packageDate->decrement('seats_booked', min($booking->mainPax(), $booking->packageDate->seats_booked));
+            }
+
+            // Postponed passengers who were given a new date still hold a seat there.
+            if ($booking->status === 'confirmed') {
+                foreach ($booking->postponements()->where('status', \App\Models\BookingPostponement::REDATED)->get() as $group) {
+                    if ($group->packageDate) {
+                        $group->packageDate->decrement('seats_booked', min($group->paxTotal(), $group->packageDate->seats_booked));
+                    }
+                }
             }
 
             // Every remaining pack is cancelled, so every remaining pack is charged.

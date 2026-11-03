@@ -272,6 +272,13 @@ Route::middleware(['auth', 'role:super_admin,hq,admin'])->group(function () {
         Route::post('bookings/{booking}/resort-invoice', [ManageBooking::class, 'uploadResortInvoice'])->name('bookings.resort-invoice');
         Route::post('bookings/{booking}/revision', [ManageBooking::class, 'requestRevision'])->name('bookings.revision');
         Route::post('bookings/{booking}/remark', [ManageBooking::class, 'saveRemark'])->name('bookings.remark');
+        // Staff price items. Included items move the total and commission; excluded ones don't.
+        Route::post('bookings/{booking}/items', [ManageBooking::class, 'addItem'])->name('bookings.items.store');
+        Route::patch('bookings/{booking}/items/{item}', [ManageBooking::class, 'updateItem'])->name('bookings.items.update');
+        Route::delete('bookings/{booking}/items/{item}', [ManageBooking::class, 'deleteItem'])->name('bookings.items.destroy');
+        // Some passengers put their trip off. The booking stays confirmed; they are redated onto their own departure.
+        Route::post('bookings/{booking}/postpone-pax', [ManageBooking::class, 'postponePax'])->name('bookings.postpone-pax');
+        Route::post('bookings/{booking}/postponements/{postponement}/redate', [ManageBooking::class, 'redatePax'])->name('bookings.postponements.redate');
         // Name stays under `bookings.` — EnsurePermission maps the section off that segment.
         Route::get('bookings/{booking}/versions/{version}', [ManageBooking::class, 'version'])->name('bookings.versions.show');
         Route::post('bookings/{booking}/amendments/{amendment}/approve', [ManageBooking::class, 'approveAmendment'])->name('bookings.amendments.approve');

@@ -216,6 +216,64 @@ class BookingController extends Controller
      * Staff-only remark, editable from the list without opening the booking. Writes
      * `internal_notes` — never `agent_note` (agent-authored) or `notes` (customer's requests).
      */
+    public function addItem(Booking $booking, Request $request, \App\Services\BookingItemService $items)
+    {
+        $data = $request->validate([
+            'name'        => ['required', 'string', 'max:120'],
+            // Per passenger. Negative = a deduction. Zero would be a no-op line.
+            'unit_amount' => ['required', 'numeric', 'between:-100000,100000', 'not_in:0'],
+            'included'    => ['nullable', 'boolean'],
+        ]);
+
+        $items->add($booking, $data, $request->user());
+
+        return back()->with('ok', 'Price item added.');
+    }
+
+    public function updateItem(Booking $booking, \App\Models\BookingItem $item, Request $request, \App\Services\BookingItemService $items)
+    {
+        abort_unless($item->booking_id === $booking->id, 404);
+        $data = $request->validate(['included' => ['required', 'boolean']]);
+
+        $items->setIncluded($item, (bool) $data['included'], $request->user());
+
+        return back()->with('ok', $data['included'] ? 'Item included in the price.' : 'Item excluded from the price.');
+    }
+
+    public function deleteItem(Booking $booking, \App\Models\BookingItem $item, Request $request, \App\Services\BookingItemService $items)
+    {
+        abort_unless($item->booking_id === $booking->id, 404);
+
+        $items->remove($item, $request->user());
+
+        return back()->with('ok', 'Price item removed.');
+    }
+
+    public function postponePax(Booking $booking, Request $request, \App\Services\PartialPostponementService $postponements)
+    {
+        $data = $request->validate([
+            'adults'   => ['nullable', 'integer', 'min:0', 'max:99'],
+            'children' => ['nullable', 'integer', 'min:0', 'max:99'],
+            'seniors'  => ['nullable', 'integer', 'min:0', 'max:99'],
+            'infants'  => ['nullable', 'integer', 'min:0', 'max:99'],
+            'reason'   => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $postponements->postpone($booking, $data, $data['reason'] ?? null, $request->user());
+
+        return back()->with('ok', 'Passengers postponed — their seats are released and the fare stays on the booking.');
+    }
+
+    public function redatePax(Booking $booking, \App\Models\BookingPostponement $postponement, Request $request, \App\Services\PartialPostponementService $postponements)
+    {
+        abort_unless($postponement->booking_id === $booking->id, 404);
+        $data = $request->validate(['package_date_id' => ['required', 'integer', 'exists:package_dates,id']]);
+
+        $postponements->redate($postponement, (int) $data['package_date_id'], $request->user());
+
+        return back()->with('ok', 'New travel date set for the postponed passengers.');
+    }
+
     public function saveRemark(Booking $booking, Request $request)
     {
         $data = $request->validate(['internal_notes' => ['nullable', 'string', 'max:1000']]);
