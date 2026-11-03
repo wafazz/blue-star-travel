@@ -63,6 +63,13 @@
     </form>
   </div>
 
+  <div class="d-flex justify-content-end mb-3">
+    <form method="POST" action="{{ route('manage.agents.push-test') }}" onsubmit="return confirm('Send a test push to every agent with an enabled device?')">
+      @csrf
+      <button class="btn btn-sm btn-outline-primary">🔔 Send test to all enabled</button>
+    </form>
+  </div>
+
   <form class="d-flex flex-wrap gap-2 mb-3" method="GET">
     <input type="text" name="q" value="{{ request('q') }}" class="form-control form-control-sm" placeholder="Search name, email, code, phone…" style="min-width:240px">
     <select name="tier" class="form-select form-select-sm" style="width:auto" onchange="this.form.submit()">
@@ -111,6 +118,13 @@
                   <span class="badge text-bg-success" title="Device push enabled">🔔 On · {{ $agent->push_subscriptions_count }} {{ Str::plural('device', $agent->push_subscriptions_count) }}</span>
                 @else
                   <span class="badge text-bg-light border text-secondary">Off</span>
+                @endif
+                @if ($agent->push_subscriptions_count)
+                  <form method="POST" action="{{ route('manage.agents.push-test') }}" class="d-inline ms-1">
+                    @csrf
+                    <input type="hidden" name="agent_id" value="{{ $agent->id }}">
+                    <button class="btn btn-sm btn-link p-0 ms-1">Send test</button>
+                  </form>
                 @endif
               </td>
               <td class="text-end"><a href="{{ route('manage.agents.show', $agent) }}" class="btn btn-sm btn-outline-primary">View</a></td>
