@@ -87,7 +87,7 @@
           <tr>
             <th>Agent</th><th>Code</th><th>Tier</th><th>Upline</th>
             <th class="text-center">Direct Downlines</th><th class="text-end">Lifetime Sales</th>
-            <th class="text-end">Wallet</th><th>Status</th><th class="text-end"></th>
+            <th class="text-end">Wallet</th><th>Status</th><th>Push</th><th class="text-end"></th>
           </tr>
         </thead>
         <tbody>
@@ -106,10 +106,17 @@
               <td class="text-end small">RM {{ number_format((float) $agent->sales_total, 2) }}</td>
               <td class="text-end small fw-semibold">RM {{ number_format((float) ($agent->wallet->balance ?? 0), 2) }}</td>
               <td><span class="badge text-bg-{{ $statusBadge[$agent->status] ?? 'secondary' }}">{{ ucfirst($agent->status) }}</span></td>
+              <td>
+                @if ($agent->push_subscriptions_count)
+                  <span class="badge text-bg-success" title="Device push enabled">🔔 On · {{ $agent->push_subscriptions_count }} {{ Str::plural('device', $agent->push_subscriptions_count) }}</span>
+                @else
+                  <span class="badge text-bg-light border text-secondary">Off</span>
+                @endif
+              </td>
               <td class="text-end"><a href="{{ route('manage.agents.show', $agent) }}" class="btn btn-sm btn-outline-primary">View</a></td>
             </tr>
           @empty
-            <tr><td colspan="9" class="text-center text-secondary py-4">No agents yet.</td></tr>
+            <tr><td colspan="10" class="text-center text-secondary py-4">No agents yet.</td></tr>
           @endforelse
         </tbody>
       </table>

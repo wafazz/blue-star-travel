@@ -23,6 +23,7 @@ class AgentController extends Controller
         $query = User::where('role', 'agent')
             ->with('wallet', 'referrer')
             ->withCount('referrals as direct_downlines')
+            ->withCount('pushSubscriptions')
             ->withSum(['agentBookings as sales_total' => fn ($q) => $q->whereIn('status', Booking::SOLD_STATUSES)], 'total_amount');
 
         if ($search = trim((string) $request->get('q'))) {
