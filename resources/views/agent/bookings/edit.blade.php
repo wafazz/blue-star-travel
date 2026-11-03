@@ -76,10 +76,19 @@
         <label class="lbl">Departure date @if ($flag('booking.package_date_id'))<span style="color:#b26a00">• admin requested this</span>@endif</label>
         <select name="package_date_id" id="package_date_id" class="inp"><option value="">—</option></select>
       </div>
-      <div id="travelWrap">
-        <label class="lbl">Travel date @if ($flag('booking.travel_date'))<span style="color:#b26a00">• admin requested this</span>@endif</label>
-        <input type="date" name="travel_date" id="travel_date" class="inp @if ($flag('booking.travel_date')) flagged @endif"
-               value="{{ old('travel_date', data_get($payload, 'booking.travel_date')) }}">
+      {{-- Check-in and check-out side by side, as on the new-booking form. A scheduled
+           departure fills both and locks them; an open date lets the agent type both. --}}
+      <div id="travelWrap" class="row2">
+        <div>
+          <label class="lbl">Check-in Date @if ($flag('booking.travel_date'))<span style="color:#b26a00">• admin requested this</span>@endif</label>
+          <input type="date" name="travel_date" id="travel_date" class="inp @if ($flag('booking.travel_date')) flagged @endif"
+                 value="{{ old('travel_date', data_get($payload, 'booking.travel_date')) }}">
+        </div>
+        <div>
+          <label class="lbl">Check-out Date @if ($flag('booking.return_date'))<span style="color:#b26a00">• admin requested this</span>@endif</label>
+          <input type="date" name="return_date" id="return_date" class="inp @if ($flag('booking.return_date')) flagged @endif"
+                 value="{{ old('return_date', data_get($payload, 'booking.return_date')) }}">
+        </div>
       </div>
       <div class="m" id="dateNote" style="font-size:11.5px;margin:-6px 0 10px"></div>
     </div>

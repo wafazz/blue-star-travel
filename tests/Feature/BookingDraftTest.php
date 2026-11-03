@@ -150,6 +150,15 @@ class BookingDraftTest extends TestCase
         $this->assertSame($this->agent->id, $draft->user_id);
     }
 
+    public function test_the_draft_keeps_the_check_out_and_refuses_one_before_the_check_in(): void
+    {
+        $booking = $this->booking();
+        $this->saveDraft($booking, ['return_date' => '2026-09-18'])->assertSessionHasNoErrors();
+        $this->assertSame('2026-09-18', $booking->drafts()->first()->value('booking.return_date'));
+
+        $this->saveDraft($booking, ['return_date' => '2026-09-10'])->assertSessionHasErrors('return_date');
+    }
+
     public function test_the_edit_form_rehydrates_from_the_draft_after_signing_back_in(): void
     {
         $booking = $this->booking();

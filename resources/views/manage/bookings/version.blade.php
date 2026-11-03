@@ -45,6 +45,7 @@
         <div class="d-flex justify-content-between small mb-1"><span class="text-secondary">Package</span><span>{{ data_get($p, 'booking.package_title') ?? '—' }}</span></div>
         <div class="d-flex justify-content-between small mb-1"><span class="text-secondary">Departure</span><span>{{ data_get($p, 'booking.departure_label') ?? '—' }}</span></div>
         <div class="d-flex justify-content-between small mb-1"><span class="text-secondary">Travel date</span><span>{{ data_get($p, 'booking.travel_date') ?? '—' }}</span></div>
+        <div class="d-flex justify-content-between small mb-1"><span class="text-secondary">Check-out</span><span>{{ data_get($p, 'booking.return_date') ?? '—' }}</span></div>
         <div class="d-flex justify-content-between small mb-1"><span class="text-secondary">Pickup</span><span>{{ data_get($p, 'booking.pickup_location') ?? '—' }}</span></div>
         <div class="d-flex justify-content-between small"><span class="text-secondary">Arrival time</span><span>{{ data_get($p, 'booking.arrival_time') ?? '—' }}</span></div>
       </div>

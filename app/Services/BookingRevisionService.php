@@ -40,6 +40,7 @@ class BookingRevisionService
         'booking.package_id'      => 'booking.package_title',
         'booking.package_date_id' => 'booking.departure_label',
         'booking.travel_date'     => 'booking.travel_date',
+        'booking.return_date'     => 'booking.return_date',
         'booking.pickup_location' => 'booking.pickup_location',
         'booking.arrival_time'    => 'booking.arrival_time',
         'payment.amount'          => 'payment.amount',
@@ -64,6 +65,9 @@ class BookingRevisionService
                 'package_date_id' => $booking->package_date_id,
                 'departure_label' => $booking->packageDate?->depart_date?->format('d M Y'),
                 'travel_date'     => optional($booking->travel_date)->format('Y-m-d'),
+                // The check-out the agent actually sees: a departure's own, a typed one, or the
+                // package length. Stored as the resolved date so the form and the diff agree.
+                'return_date'     => optional($booking->returnDate())->format('Y-m-d'),
                 'pickup_location' => $booking->pickup_location,
                 'arrival_time'    => $booking->arrival_time ? substr($booking->arrival_time, 0, 5) : null,
                 'notes'           => $booking->notes,
@@ -338,8 +342,12 @@ class BookingRevisionService
         // clears travel_date for fixed-date packages, so without this a resubmitted
         // booking lands with a departure but a blank date (invisible in reports/exports).
         $travelDate = data_get($payload, 'booking.travel_date');
+        $returnDate = data_get($payload, 'booking.return_date');
         if ($dateId = data_get($payload, 'booking.package_date_id')) {
-            $travelDate = optional(PackageDate::find($dateId))->depart_date ?? $travelDate;
+            $departure = PackageDate::find($dateId);
+            $travelDate = optional($departure)->depart_date ?? $travelDate;
+            // The departure owns both dates; a typed check-out only applies to an open date.
+            $returnDate = optional($departure)->return_date ?? $returnDate;
         }
 
         // Customer keys are written ONLY when they actually changed — the row is shared
@@ -361,6 +369,7 @@ class BookingRevisionService
             'package_id'      => data_get($payload, 'booking.package_id'),
             'package_date_id' => data_get($payload, 'booking.package_date_id'),
             'travel_date'     => $travelDate,
+            'return_date'     => $returnDate,
             'pickup_location' => data_get($payload, 'booking.pickup_location'),
             'arrival_time'    => data_get($payload, 'booking.arrival_time'),
             'notes'           => data_get($payload, 'booking.notes'),

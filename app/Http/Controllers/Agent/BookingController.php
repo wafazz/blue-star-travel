@@ -320,6 +320,13 @@ class BookingController extends Controller
                     && ! $request->filled('requested_package_date_id')),
             ],
             'requested_package_date_id' => ['nullable', 'exists:package_dates,id'],
+            // Check-out for the new date. Optional — left blank it follows the package length.
+            'requested_return_date'     => ['nullable', 'date', 'after:today', function ($attr, $value, $fail) use ($request) {
+                $in = $request->input('requested_date');
+                if ($value && $in && $value <= $in) {
+                    $fail('The check-out date must be after the check-in date.');
+                }
+            }],
             'requested_pickup_location' => ['nullable', 'required_if:type,pickup', 'string', 'max:255'],
             'requested_arrival_time'    => ['nullable', 'date_format:H:i'],
             // Client rule: a date change is not reviewable on the agent's word alone.
@@ -340,6 +347,12 @@ class BookingController extends Controller
             // Belt and braces: a postponement carries no date, whatever the form posted.
             $data['requested_date'] = null;
             $data['requested_package_date_id'] = null;
+            $data['requested_return_date'] = null;
+        }
+
+        // A scheduled departure owns both dates, so a typed check-out never sits beside one.
+        if (! empty($data['requested_package_date_id'])) {
+            $data['requested_return_date'] = null;
         }
 
         if ($request->hasFile('attachment')) {
@@ -429,6 +442,7 @@ class BookingController extends Controller
             'package_id'         => ['required', 'exists:packages,id'],
             'package_date_id'    => ['nullable', 'exists:package_dates,id'],
             'travel_date'        => ['nullable', 'date'],
+            'return_date'        => ['nullable', 'date', 'after:travel_date'],
             'pickup_location'    => ['nullable', 'string', 'max:255'],
             'arrival_time'       => ['nullable', 'date_format:H:i'],
             'notes'              => ['nullable', 'string', 'max:1000'],
@@ -461,6 +475,8 @@ class BookingController extends Controller
         // a value apply() is about to put straight back.
         $departure = $package?->dates->firstWhere('id', (int) ($data['package_date_id'] ?? 0));
         $travelDate = optional($departure)->depart_date?->format('Y-m-d') ?? ($data['travel_date'] ?? null);
+        // Same rule as the travel date: a departure owns the check-out, otherwise the typed one.
+        $returnDate = optional($departure)->return_date?->format('Y-m-d') ?? ($data['return_date'] ?? null);
 
         // A replaced receipt goes to the private disk immediately; only its path is staged.
         // The superseded file is never deleted — older versions still link to it.
@@ -476,6 +492,7 @@ class BookingController extends Controller
                 'package_date_id' => $data['package_date_id'] ?? null,
                 'departure_label' => optional($departure)->depart_date?->format('d M Y'),
                 'travel_date'     => $travelDate,
+                'return_date'     => $returnDate,
                 'pickup_location' => $data['pickup_location'] ?? null,
                 'arrival_time'    => $data['arrival_time'] ?? null,
                 'notes'           => $data['notes'] ?? null,

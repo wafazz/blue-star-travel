@@ -298,6 +298,41 @@ class BookingAmendmentTest extends TestCase
         )->assertNotFound();
     }
 
+    public function test_a_date_change_carries_its_own_check_out_and_applies_on_approval(): void
+    {
+        $booking = $this->booking();
+        $this->request($booking, [
+            'requested_package_date_id' => null,
+            'requested_date'            => '2026-12-10',
+            'requested_return_date'     => '2026-12-14',
+        ])->assertRedirect();
+
+        $amendment = $booking->amendments()->first();
+        $this->assertSame('2026-12-14', $amendment->requested_return_date->format('Y-m-d'));
+        $this->assertStringContainsString('→ 14 Dec 2026', $amendment->requestedLabel());
+
+        $this->actingAs($this->admin)->post(
+            route('manage.bookings.amendments.approve', [$booking, $amendment]),
+            ['admin_note' => 'Approved by ops.']
+        )->assertRedirect();
+
+        $booking->refresh();
+        $this->assertSame('2026-12-10', $booking->travel_date->format('Y-m-d'));
+        $this->assertSame('2026-12-14', $booking->return_date->format('Y-m-d'));
+    }
+
+    public function test_a_check_out_on_or_before_the_check_in_is_refused(): void
+    {
+        $booking = $this->booking();
+        $this->request($booking, [
+            'requested_package_date_id' => null,
+            'requested_date'            => '2026-12-10',
+            'requested_return_date'     => '2026-12-10',
+        ])->assertSessionHasErrors('requested_return_date');
+
+        $this->assertSame(0, $booking->amendments()->count());
+    }
+
     public function test_a_reason_is_required(): void
     {
         $booking = $this->booking();

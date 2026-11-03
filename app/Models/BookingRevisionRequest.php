@@ -25,6 +25,7 @@ class BookingRevisionRequest extends Model
         'booking.package_id'      => ['label' => 'Package',         'group' => 'Travel'],
         'booking.package_date_id' => ['label' => 'Departure',       'group' => 'Travel'],
         'booking.travel_date'     => ['label' => 'Travel Date',     'group' => 'Travel'],
+        'booking.return_date'     => ['label' => 'Check-out Date',  'group' => 'Travel'],
         'rooms'                   => ['label' => 'Rooms & Pax',     'group' => 'Travel'],
         'pax'                     => ['label' => 'Passengers',      'group' => 'Travel'],
         'booking.pickup_location' => ['label' => 'Pickup Location', 'group' => 'Pickup'],
