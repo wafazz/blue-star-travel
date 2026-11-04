@@ -108,7 +108,7 @@ class BookingItemsTest extends TestCase
     public function test_a_deduction_reduces_the_total_and_removing_an_item_restores_it(): void
     {
         $booking = $this->booking();
-        $this->addItem($booking, ['name' => 'Early-bird discount', 'unit_amount' => -100]);
+        $this->addItem($booking, ['name' => 'Early-bird discount', 'unit_amount' => 100, 'direction' => 'deduct']);
         $this->assertSame(1800.0, (float) $booking->refresh()->total_amount);
 
         $item = $booking->items()->first();
@@ -167,6 +167,42 @@ class BookingItemsTest extends TestCase
             ->delete(route('manage.bookings.items.destroy', [$mine, $item]))
             ->assertNotFound();
         $this->assertSame(1, BookingItem::count());
+    }
+
+    public function test_a_deduction_for_one_pack_takes_off_only_that_pack(): void
+    {
+        // RM5,000 for 4 packs. One pack drops scuba diving (RM300): only RM300 comes off.
+        $booking = $this->booking();
+        $booking->update(['adults' => 4, 'total_pax' => 4, 'subtotal' => 5000, 'total_amount' => 5000, 'paid_amount' => 5000]);
+        $booking->rooms()->update(['adults' => 4, 'subtotal' => 5000]);
+
+        $this->addItem($booking, ['name' => 'Scuba diving', 'unit_amount' => 300, 'direction' => 'deduct', 'quantity' => 1])
+            ->assertRedirect();
+
+        $booking->refresh();
+        $this->assertSame(4700.0, (float) $booking->total_amount, 'RM5,000 − RM300 for the one pack.');
+        $this->assertSame(5000.0, (float) $booking->paid_amount, 'The deposit never moves.');
+        $this->assertSame(-300.0, (float) $booking->items()->first()->unit_amount);
+        $this->assertSame(1, $booking->items()->first()->quantity);
+    }
+
+    public function test_an_item_with_no_pack_count_applies_to_every_pack(): void
+    {
+        $booking = $this->booking();
+        $booking->update(['adults' => 4, 'total_pax' => 4, 'subtotal' => 5000, 'total_amount' => 5000, 'paid_amount' => 5000]);
+
+        $this->addItem($booking, ['name' => 'Full board', 'unit_amount' => 100, 'direction' => 'add'])->assertRedirect();
+
+        $this->assertSame(5400.0, (float) $booking->refresh()->total_amount, 'RM100 × 4 packs.');
+    }
+
+    public function test_the_pack_count_cannot_exceed_the_booking_or_be_zero(): void
+    {
+        $booking = $this->booking();
+
+        $this->addItem($booking, ['unit_amount' => 300, 'direction' => 'deduct', 'quantity' => 3])->assertSessionHasErrors('quantity');
+        $this->addItem($booking, ['unit_amount' => 300, 'direction' => 'deduct', 'quantity' => 0])->assertSessionHasErrors('quantity');
+        $this->assertSame(0, $booking->items()->count());
     }
 
     public function test_zero_and_non_numeric_amounts_are_refused(): void
