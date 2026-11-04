@@ -12,6 +12,7 @@ class BookingItem extends Model
 
     protected $casts = [
         'unit_amount' => 'decimal:2',
+        'quantity'    => 'integer',
         'included'    => 'boolean',
     ];
 
@@ -20,9 +21,14 @@ class BookingItem extends Model
         return $this->belongsTo(Booking::class);
     }
 
-    /** Sum of the included items per passenger. Deductions reduce it. */
-    public static function perPaxFor(Booking $booking): float
+    /**
+     * Money the included items add to a booking of this many packs. An item with a
+     * quantity applies to that many packs; one with none applies to every pack.
+     * A deduction is a negative unit amount, so it reduces the total.
+     */
+    public static function totalFor(Booking $booking, int $paxTotal): float
     {
-        return round((float) $booking->items()->where('included', true)->sum('unit_amount'), 2);
+        return round((float) $booking->items()->where('included', true)->get()
+            ->sum(fn (self $item) => (float) $item->unit_amount * ($item->quantity ?? $paxTotal)), 2);
     }
 }

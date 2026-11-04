@@ -407,12 +407,12 @@
 
       <div class="card p-3 p-lg-4 mb-3">
         <h6 class="fw-bold mb-2">Price items</h6>
-        <div class="small text-secondary mb-2">Charged per passenger. Excluded items stay on the record but change neither the total nor the commission.</div>
+        <div class="small text-secondary mb-2">Enter the amount per pack, choose Add or Deduct, and how many packs it applies to. Excluded items stay on the record but change neither the total nor the commission.</div>
         @forelse ($booking->items as $item)
           <div class="d-flex justify-content-between align-items-center small mb-2 gap-2">
             <div class="{{ $item->included ? '' : 'text-decoration-line-through text-secondary' }}">
               {{ $item->name }}<br>
-              <span class="text-secondary">{{ $item->unit_amount >= 0 ? '+' : '−' }} RM {{ number_format(abs($item->unit_amount), 2) }} / pax</span>
+              <span class="text-secondary">{{ $item->unit_amount >= 0 ? '+' : '−' }} RM {{ number_format(abs($item->unit_amount), 2) }} / pack{{ $item->quantity === null ? ' (all packs)' : ' × ' . $item->quantity . ' ' . \Illuminate\Support\Str::plural('pack', $item->quantity) . ' = ' . ($item->unit_amount >= 0 ? '+' : '−') . ' RM ' . number_format(abs($item->unit_amount) * $item->quantity, 2) }}</span>
               @unless ($item->included)<span class="badge bg-secondary-subtle text-secondary ms-1">Excluded</span>@endunless
             </div>
             @unless (in_array($booking->status, \App\Models\Booking::AGENT_LOCKED_STATUSES, true))
@@ -438,8 +438,15 @@
             @csrf
             <input type="text" name="name" class="form-control form-control-sm mb-2" placeholder="e.g. Snorkelling" maxlength="120" required>
             <div class="row g-2 mb-2">
-              <div class="col-7"><input type="number" name="unit_amount" step="0.01" min="-100000" max="100000" class="form-control form-control-sm" placeholder="RM per pax (− to deduct)" required></div>
-              <div class="col-5">
+              <div class="col-6"><input type="number" name="unit_amount" step="0.01" min="0.01" max="100000" class="form-control form-control-sm" placeholder="RM per pack" required aria-label="Amount per pack"></div>
+              <div class="col-6">
+                <select name="direction" class="form-select form-select-sm" aria-label="Add or deduct">
+                  <option value="add">Add to total</option>
+                  <option value="deduct">Deduct from total</option>
+                </select>
+              </div>
+              <div class="col-6"><input type="number" name="quantity" step="1" min="1" max="{{ max(1, (int) $booking->total_pax) }}" class="form-control form-control-sm" placeholder="Packs (blank = all {{ $booking->total_pax }})" aria-label="Number of packs"></div>
+              <div class="col-6">
                 <select name="included" class="form-select form-select-sm" aria-label="Included in price">
                   <option value="1">Included</option>
                   <option value="0">Excluded</option>

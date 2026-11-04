@@ -220,12 +220,20 @@ class BookingController extends Controller
     {
         $data = $request->validate([
             'name'        => ['required', 'string', 'max:120'],
-            // Per passenger. Negative = a deduction. Zero would be a no-op line.
-            'unit_amount' => ['required', 'numeric', 'between:-100000,100000', 'not_in:0'],
+            // Always a positive amount in RM; `direction` decides whether it is charged or deducted.
+            'unit_amount' => ['required', 'numeric', 'between:0.01,100000'],
+            'direction'   => ['nullable', 'in:add,deduct'],
+            // Packs the item applies to. Blank = every pack on the booking.
+            'quantity'    => ['nullable', 'integer', 'min:1', 'max:' . max(1, (int) $booking->total_pax)],
             'included'    => ['nullable', 'boolean'],
         ]);
 
-        $items->add($booking, $data, $request->user());
+        $items->add($booking, [
+            'name'        => $data['name'],
+            'unit_amount' => ($data['direction'] ?? 'add') === 'deduct' ? -(float) $data['unit_amount'] : (float) $data['unit_amount'],
+            'quantity'    => $data['quantity'] ?? null,
+            'included'    => $data['included'] ?? true,
+        ], $request->user());
 
         return back()->with('ok', 'Price item added.');
     }

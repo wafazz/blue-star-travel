@@ -30,6 +30,7 @@ class BookingItemService
             $item = $locked->items()->create([
                 'name'        => $data['name'],
                 'unit_amount' => $data['unit_amount'],
+                'quantity'    => $data['quantity'] ?? null,
                 'included'    => (bool) ($data['included'] ?? true),
                 'created_by'  => $actor->id,
             ]);

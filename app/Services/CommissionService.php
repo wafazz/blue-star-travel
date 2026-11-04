@@ -170,7 +170,9 @@ class CommissionService
         // Included price items are charged per passenger, so they raise each pax's base
         // fare. A percentage commission therefore earns on them; a fixed one does not.
         $out = $this->farePaxBreakdown($booking);
-        $perPax = \App\Models\BookingItem::perPaxFor($booking);
+        // Spread the items over the packs, so the bases still add up to the trip total.
+        $packs = (int) $booking->total_pax;
+        $perPax = $packs > 0 ? $booking->itemsTotal($packs) / $packs : 0.0;
 
         foreach ($out as $type => $p) {
             if ($p['count'] > 0) {

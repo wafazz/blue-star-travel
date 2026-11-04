@@ -290,10 +290,10 @@ class Booking extends Model
         return max(0, (int) $this->total_pax - $this->postponedPaxTotal());
     }
 
-    /** What the included price items add to the total for this many passengers. */
+    /** What the included price items add to the total for a booking of this many packs. */
     public function itemsTotal(int $paxTotal): float
     {
-        return round(BookingItem::perPaxFor($this) * $paxTotal, 2);
+        return BookingItem::totalFor($this, $paxTotal);
     }
 
     public function isPostponed(): bool
